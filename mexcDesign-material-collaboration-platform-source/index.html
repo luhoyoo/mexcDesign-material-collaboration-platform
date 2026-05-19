@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>1:1 图片生成器</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="tool-panel" aria-label="图片生成设置">
+        <div class="panel-head">
+          <h1>海报协同工作台</h1>
+          <p>设计上传素材，业务生成多语言，翻译确认文案，最后一键打包导出。</p>
+        </div>
+
+        <section class="project-tools" aria-label="项目协同">
+          <div class="control-group">
+            <label for="projectNameInput">项目名称</label>
+            <input id="projectNameInput" type="text" value="MEXC 海报项目" />
+          </div>
+          <div class="control-group">
+            <label for="projectSelect">打开项目</label>
+            <select id="projectSelect"></select>
+          </div>
+          <div class="button-row">
+            <button id="newProject" type="button">新建项目</button>
+            <button id="saveProject" type="button" class="primary">保存项目</button>
+          </div>
+          <button id="copyProjectLink" type="button">复制协同链接</button>
+          <p id="projectStatus" class="status-text">当前项目尚未保存。</p>
+        </section>
+
+        <div class="control-group">
+          <label for="baseUpload">底图</label>
+          <input id="baseUpload" type="file" accept="image/*" />
+        </div>
+
+        <div class="control-group">
+          <label for="titleInput">主标题</label>
+          <textarea id="titleInput" rows="3" placeholder="Equip the&#10;$100,000 Exo Suit">Equip the
+$100,000 Exo Suit</textarea>
+        </div>
+
+        <div class="control-row wide">
+          <div class="control-group">
+            <label for="titleFont">主标题字体</label>
+            <select id="titleFont">
+              <option value="Arial Black, Arial, sans-serif">Arial Black</option>
+              <option value="PingFang SC, Microsoft YaHei, sans-serif">PingFang SC</option>
+              <option value="Inter, Noto Sans, Arial, PingFang SC, Microsoft YaHei, sans-serif" selected>Inter</option>
+              <option value="Helvetica, Arial, PingFang SC, Microsoft YaHei, sans-serif">Helvetica</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="Impact, sans-serif">Impact</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="titleSize">字号</label>
+            <input id="titleSize" type="number" min="24" max="180" value="90" />
+          </div>
+          <div class="control-group">
+            <label for="titleColor">颜色</label>
+            <input id="titleColor" type="color" value="#0055ff" />
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label for="subtitleInput">副标题</label>
+          <input id="subtitleInput" type="text" value="Epic Gear Arena S3" placeholder="Epic Gear Arena S3" />
+        </div>
+
+        <div class="control-row wide">
+          <div class="control-group">
+            <label for="subtitleFont">副标题字体</label>
+            <select id="subtitleFont">
+              <option value="Helvetica, Arial, PingFang SC, Microsoft YaHei, sans-serif">Helvetica</option>
+              <option value="PingFang SC, Microsoft YaHei, sans-serif">PingFang SC</option>
+              <option value="Inter, Noto Sans, Arial, PingFang SC, Microsoft YaHei, sans-serif" selected>Inter</option>
+              <option value="Arial Black, Arial, sans-serif">Arial Black</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="Impact, sans-serif">Impact</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="subtitleSize">字号</label>
+            <input id="subtitleSize" type="number" min="16" max="120" value="40" />
+          </div>
+          <div class="control-group">
+            <label for="subtitleColor">颜色</label>
+            <input id="subtitleColor" type="color" value="#000000" />
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label for="boxImageUpload">图片内容</label>
+          <input id="boxImageUpload" type="file" accept="image/*" />
+        </div>
+
+        <div class="language-tools">
+          <div class="api-config">
+            <div class="control-group">
+              <label for="translationProvider">翻译引擎</label>
+              <select id="translationProvider">
+                <option value="mymemory" selected>MyMemory 免费翻译</option>
+                <option value="openai">OpenAI-compatible API</option>
+              </select>
+            </div>
+            <div class="control-group openai-api-field">
+              <label for="apiKeyInput">翻译 API Key</label>
+              <input id="apiKeyInput" type="password" autocomplete="off" placeholder="MyMemory 不需要填写" />
+            </div>
+            <div class="control-group openai-api-field">
+              <label for="apiBaseUrlInput">API Base URL</label>
+              <input id="apiBaseUrlInput" type="text" value="https://api.openai.com/v1" />
+            </div>
+            <div class="control-row openai-api-field">
+              <div class="control-group">
+                <label for="apiModelInput">模型</label>
+                <input id="apiModelInput" type="text" value="gpt-4o-mini" />
+              </div>
+              <button id="saveApiConfig" type="button">保存</button>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="languageSelect">预览语言</label>
+            <select id="languageSelect"></select>
+          </div>
+          <div class="button-row">
+            <button id="generateLanguages" type="button">生成多语言</button>
+            <button id="exportAll" type="button">打包下载</button>
+          </div>
+          <p id="translationStatus" class="status-text">英文源文案会同步到 English 版本。</p>
+          <div id="languageList" class="language-list" aria-label="多语言文案列表"></div>
+        </div>
+
+        <div class="button-row">
+          <button id="resetLayout" type="button">重置布局</button>
+          <button id="exportImage" type="button" class="primary">导出 PNG</button>
+        </div>
+      </section>
+
+      <section class="canvas-area" aria-label="编辑画布">
+        <div id="stage" class="stage">
+          <canvas id="previewCanvas" width="1200" height="1200"></canvas>
+          <div id="imageBox" class="overlay-box image-box" data-box="image" tabindex="0">
+            <span>图片区域</span>
+            <i></i>
+          </div>
+          <div id="titleBox" class="overlay-box text-layer-box title-box" data-box="title" tabindex="0">
+            <span>主标题区域</span>
+          </div>
+          <div id="subtitleBox" class="overlay-box text-layer-box subtitle-box" data-box="subtitle" tabindex="0">
+            <span>副标题区域</span>
+          </div>
+        </div>
+        <section class="poster-preview-panel" aria-label="多语言海报预览">
+          <div class="preview-panel-head">
+            <h2>多语言海报预览</h2>
+            <button id="refreshPreviews" type="button">刷新预览</button>
+          </div>
+          <div id="posterPreviewGrid" class="poster-preview-grid"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

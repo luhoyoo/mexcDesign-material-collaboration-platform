@@ -1,0 +1,15 @@
+{
+  "name": "poster-collaboration-workbench",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Internal poster localization collaboration workbench.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:lan": "HOST=0.0.0.0 PORT=4173 node server.js",
+    "check": "node --check server.js && node --check app.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
