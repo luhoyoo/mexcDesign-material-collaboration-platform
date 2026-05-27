@@ -192,6 +192,10 @@ button.primary:hover {
   background: var(--panel-soft);
 }
 
+.standalone-mode .project-tools {
+  display: none;
+}
+
 .api-config {
   display: grid;
   gap: 10px;

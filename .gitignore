@@ -3,3 +3,7 @@ node_modules/
 .env
 *.log
 data/projects.json
+*.zip
+*.gitbundle
+mexcDesign-material-collaboration-platform-source/
+.vercel/

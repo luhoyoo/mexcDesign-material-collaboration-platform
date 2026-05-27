@@ -11,26 +11,51 @@ const IMAGE_LAYOUT = {
   width: 750,
   height: 566,
 };
-const LANGUAGES = [
-  { code: "en", name: "English", target: "English", dir: "ltr" },
-  { code: "zh-Hant", name: "繁体中文", target: "Traditional Chinese", dir: "ltr" },
-  { code: "zh-Hans", name: "简体中文", target: "Simplified Chinese", dir: "ltr" },
-  { code: "ja", name: "日本語", target: "Japanese", dir: "ltr" },
-  { code: "ru", name: "Русский", target: "Russian", dir: "ltr" },
-  { code: "tr", name: "Türkçe", target: "Turkish", dir: "ltr" },
-  { code: "vi", name: "Tiếng Việt", target: "Vietnamese", dir: "ltr" },
-  { code: "uk", name: "Українська", target: "Ukrainian", dir: "ltr" },
-  { code: "id", name: "Indonesia", target: "Indonesian", dir: "ltr" },
-  { code: "pt", name: "Português", target: "Portuguese", dir: "ltr" },
-  { code: "es", name: "Español", target: "Spanish", dir: "ltr" },
-  { code: "it", name: "Italiano", target: "Italian", dir: "ltr" },
-  { code: "fa", name: "فارسی", target: "Persian", dir: "rtl" },
-  { code: "fil", name: "Filipino", target: "Filipino", dir: "ltr" },
-  { code: "ar", name: "العربية", target: "Arabic", dir: "rtl" },
-  { code: "de", name: "Deutsch", target: "German", dir: "ltr" },
-  { code: "fr", name: "Français", target: "French", dir: "ltr" },
-  { code: "th", name: "ไทย", target: "Thai", dir: "ltr" },
+let LANGUAGES = [
+  { code: "en", csvCodes: ["en-US", "en"], name: "English", target: "English", dir: "ltr" },
+  { code: "zh-Hant", csvCodes: ["zh-TW", "zh-Hant"], name: "繁体中文", target: "Traditional Chinese", dir: "ltr" },
+  { code: "zh-Hans", csvCodes: ["zh-CN", "zh-Hans"], name: "简体中文", target: "Simplified Chinese", dir: "ltr" },
+  { code: "zh-MY", csvCodes: ["zh-MY"], name: "中文（马来西亚）", target: "Chinese Malaysia", dir: "ltr" },
+  { code: "ja", csvCodes: ["ja-JP", "ja"], name: "日本語", target: "Japanese", dir: "ltr" },
+  { code: "ko", csvCodes: ["ko-KR", "ko"], name: "한국어", target: "Korean", dir: "ltr" },
+  { code: "ru", csvCodes: ["ru-RU", "ru"], name: "Русский", target: "Russian", dir: "ltr" },
+  { code: "tr", csvCodes: ["tr-TR", "tr"], name: "Türkçe", target: "Turkish", dir: "ltr" },
+  { code: "tr-CT", csvCodes: ["tr-CT"], name: "Türkçe CT", target: "Turkish", dir: "ltr" },
+  { code: "vi", csvCodes: ["vi-VN", "vi"], name: "Tiếng Việt", target: "Vietnamese", dir: "ltr" },
+  { code: "uk", csvCodes: ["uk-UA", "uk"], name: "Українська", target: "Ukrainian", dir: "ltr" },
+  { code: "id", csvCodes: ["id-ID", "id"], name: "Indonesia", target: "Indonesian", dir: "ltr" },
+  { code: "pt", csvCodes: ["pt-PT", "pt"], name: "Português", target: "Portuguese", dir: "ltr" },
+  { code: "es", csvCodes: ["es-ES", "es"], name: "Español", target: "Spanish", dir: "ltr" },
+  { code: "it", csvCodes: ["it-IT", "it"], name: "Italiano", target: "Italian", dir: "ltr" },
+  { code: "fa", csvCodes: ["fa-IR", "fa"], name: "فارسی", target: "Persian", dir: "rtl" },
+  { code: "fil", csvCodes: ["fil-PH", "fil"], name: "Filipino", target: "Filipino", dir: "ltr" },
+  { code: "ar", csvCodes: ["ar-AE", "ar"], name: "العربية", target: "Arabic", dir: "rtl" },
+  { code: "he", csvCodes: ["he-IL", "he"], name: "עברית", target: "Hebrew", dir: "rtl" },
+  { code: "de", csvCodes: ["de-DE", "de"], name: "Deutsch", target: "German", dir: "ltr" },
+  { code: "fr", csvCodes: ["fr-FR", "fr"], name: "Français", target: "French", dir: "ltr" },
+  { code: "th", csvCodes: ["th-TH", "th"], name: "ไทย", target: "Thai", dir: "ltr" },
 ];
+const IS_STANDALONE = window.location.protocol === "file:";
+const MYMEMORY_LANGUAGE_CODES = {
+  ar: "ar",
+  de: "de",
+  en: "en",
+  es: "es",
+  fa: "fa",
+  fil: "tl",
+  fr: "fr",
+  id: "id",
+  it: "it",
+  ja: "ja",
+  pt: "pt",
+  ru: "ru",
+  th: "th",
+  tr: "tr",
+  uk: "uk",
+  vi: "vi",
+  "zh-Hans": "zh-CN",
+  "zh-Hant": "zh-TW",
+};
 
 const canvas = document.querySelector("#previewCanvas");
 const ctx = canvas.getContext("2d");
@@ -55,6 +80,7 @@ const generateLanguages = document.querySelector("#generateLanguages");
 const exportAll = document.querySelector("#exportAll");
 const translationStatus = document.querySelector("#translationStatus");
 const languageList = document.querySelector("#languageList");
+const csvUpload = document.querySelector("#csvUpload");
 const translationProvider = document.querySelector("#translationProvider");
 const apiConfigPanel = document.querySelector(".api-config");
 const apiKeyInput = document.querySelector("#apiKeyInput");
@@ -69,6 +95,10 @@ const newProject = document.querySelector("#newProject");
 const saveProject = document.querySelector("#saveProject");
 const copyProjectLink = document.querySelector("#copyProjectLink");
 const projectStatus = document.querySelector("#projectStatus");
+
+if (IS_STANDALONE) {
+  document.body.classList.add("standalone-mode");
+}
 
 const state = {
   projectId: "",
@@ -488,6 +518,117 @@ function clearPreviewImages() {
   renderPosterPreviewGrid();
 }
 
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+  const normalizedText = text.replace(/^\uFEFF/, "");
+
+  for (let index = 0; index < normalizedText.length; index += 1) {
+    const char = normalizedText[index];
+    const nextChar = normalizedText[index + 1];
+
+    if (char === '"' && inQuotes && nextChar === '"') {
+      cell += '"';
+      index += 1;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      row.push(cell);
+      cell = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && nextChar === "\n") {
+        index += 1;
+      }
+      row.push(cell);
+      if (row.some((value) => value.trim())) {
+        rows.push(row);
+      }
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+
+  row.push(cell);
+  if (row.some((value) => value.trim())) {
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function normalizeCell(value) {
+  return String(value || "").trim();
+}
+
+function getCsvLanguage(csvCode) {
+  const normalizedCode = csvCode.toLowerCase();
+  return LANGUAGES.find((language) => (
+    language.csvCodes || [language.code]
+  ).some((code) => code.toLowerCase() === normalizedCode));
+}
+
+function applyCsvRows(rows) {
+  const headerRow = rows[0] || [];
+  const titleRow = rows.find((row) => normalizeCell(row[0]).toLowerCase() === "header");
+  const subtitleRow = rows.find((row) => normalizeCell(row[0]).toLowerCase() === "subhead");
+
+  if (!titleRow || !subtitleRow) {
+    throw new Error("CSV 需要包含 Header 和 Subhead 两行");
+  }
+
+  let importedCount = 0;
+
+  headerRow.forEach((rawCode, columnIndex) => {
+    const csvCode = normalizeCell(rawCode);
+    if (!csvCode) {
+      return;
+    }
+
+    const language = getCsvLanguage(csvCode);
+    const title = normalizeCell(titleRow[columnIndex]);
+    const subtitle = normalizeCell(subtitleRow[columnIndex]);
+
+    if (!language || (!title && !subtitle)) {
+      return;
+    }
+
+    state.variants[language.code] = {
+      ...(state.variants[language.code] || {}),
+      title: title || state.variants[language.code]?.title || "",
+      subtitle: subtitle || state.variants[language.code]?.subtitle || "",
+      reviewStatus: "待检查",
+      note: "",
+      status: "CSV导入",
+    };
+    importedCount += 1;
+  });
+
+  const englishVariant = state.variants.en;
+  if (englishVariant) {
+    state.sourceTitle = englishVariant.title;
+    state.sourceSubtitle = englishVariant.subtitle;
+    titleInput.value = state.sourceTitle;
+    subtitleInput.value = state.sourceSubtitle;
+    syncEnglishVariant();
+    state.variants.en.status = "CSV导入";
+  }
+
+  clearPreviewImages();
+  renderLanguageList();
+  renderPosterPreviewGrid();
+  render();
+  translationStatus.textContent = `已从 CSV 导入 ${importedCount} 个语言版本。`;
+}
+
+async function importCsvFile(file) {
+  const text = await file.text();
+  applyCsvRows(parseCsv(text));
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -499,6 +640,23 @@ function escapeHtml(value) {
 async function translateVariant(language, titleMode = "default") {
   if (language.code === "en") {
     return state.variants.en;
+  }
+
+  if (IS_STANDALONE) {
+    const titleSource = titleMode === "compact"
+      ? compactSourceTitle(state.sourceTitle)
+      : state.sourceTitle;
+    const [title, subtitle] = await Promise.all([
+      translateWithMyMemoryClient(titleSource, language.code),
+      translateWithMyMemoryClient(state.sourceSubtitle, language.code),
+    ]);
+    return {
+      title: title || state.sourceTitle,
+      subtitle: subtitle || state.sourceSubtitle,
+      reviewStatus: "待检查",
+      note: "",
+      status: "已翻译",
+    };
   }
 
   const response = await fetch("/api/translate", {
@@ -529,6 +687,31 @@ async function translateVariant(language, titleMode = "default") {
     note: "",
     status: "已翻译",
   };
+}
+
+async function translateWithMyMemoryClient(text, languageCode) {
+  const targetCode = MYMEMORY_LANGUAGE_CODES[languageCode] || languageCode;
+  const url = new URL("https://api.mymemory.translated.net/get");
+  url.searchParams.set("q", text);
+  url.searchParams.set("langpair", `en|${targetCode}`);
+
+  const response = await fetch(url.toString());
+  const data = await response.json();
+
+  if (!response.ok || data.responseStatus >= 400) {
+    throw new Error(data.responseDetails || "MyMemory translation failed");
+  }
+
+  return data.responseData?.translatedText || "";
+}
+
+function compactSourceTitle(title) {
+  return title
+    .replace(/\bEquip the\b/gi, "Equip")
+    .replace(/\bwith the\b/gi, "with")
+    .replace(/\bfor the\b/gi, "for")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function generateLanguageVariants() {
@@ -741,10 +924,47 @@ function getImageBoxLayout() {
   };
 }
 
+function optimizeSharedImage(image, dataUrl, maxWidth, maxHeight) {
+  if (!image || !dataUrl) {
+    return "";
+  }
+
+  if (
+    dataUrl.startsWith("data:image/webp")
+    && image.width <= maxWidth
+    && image.height <= maxHeight
+  ) {
+    return dataUrl;
+  }
+
+  const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
+  const optimizedCanvas = document.createElement("canvas");
+  optimizedCanvas.width = Math.round(image.width * scale);
+  optimizedCanvas.height = Math.round(image.height * scale);
+  optimizedCanvas.getContext("2d").drawImage(
+    image,
+    0,
+    0,
+    optimizedCanvas.width,
+    optimizedCanvas.height,
+  );
+  return optimizedCanvas.toDataURL("image/webp", 0.92);
+}
+
 function buildProjectData() {
   return {
-    baseImageData: state.baseImageData,
-    contentImageData: state.contentImageData,
+    baseImageData: optimizeSharedImage(
+      state.baseImage,
+      state.baseImageData,
+      CANVAS_SIZE,
+      CANVAS_SIZE,
+    ),
+    contentImageData: optimizeSharedImage(
+      state.contentImage,
+      state.contentImageData,
+      IMAGE_LAYOUT.width,
+      IMAGE_LAYOUT.height,
+    ),
     sourceTitle: state.sourceTitle,
     sourceSubtitle: state.sourceSubtitle,
     variants: state.variants,
@@ -808,8 +1028,19 @@ async function applyProjectData(project) {
 }
 
 async function loadProjectList() {
+  if (IS_STANDALONE) {
+    projectSelect.innerHTML = '<option value="">本地单机模式</option>';
+    projectStatus.textContent = "本地单机模式：无需服务器，不保存协同项目。";
+    return;
+  }
+
   const response = await fetch("/api/projects");
-  state.projectList = response.ok ? await response.json() : [];
+  if (!response.ok) {
+    projectStatus.textContent = "协同存储尚未连接，请先在部署平台配置项目存储。";
+    state.projectList = [];
+  } else {
+    state.projectList = await response.json();
+  }
   projectSelect.innerHTML = [
     '<option value="">选择已有项目</option>',
     ...state.projectList.map((project) => (
@@ -820,6 +1051,11 @@ async function loadProjectList() {
 }
 
 async function saveCurrentProject() {
+  if (IS_STANDALONE) {
+    projectStatus.textContent = "本地单机模式不保存协同项目，请直接导出 PNG 或 ZIP。";
+    return;
+  }
+
   const name = projectNameInput.value.trim() || "未命名项目";
   const payload = {
     name,
@@ -834,7 +1070,7 @@ async function saveCurrentProject() {
   });
 
   if (!response.ok) {
-    projectStatus.textContent = "保存失败，请确认当前通过 http://127.0.0.1:4173/ 打开。";
+    projectStatus.textContent = "保存失败，请检查线上存储配置或图片文件大小。";
     return;
   }
 
@@ -847,6 +1083,10 @@ async function saveCurrentProject() {
 }
 
 async function loadProjectById(projectId) {
+  if (IS_STANDALONE) {
+    return;
+  }
+
   if (!projectId) {
     return;
   }
@@ -895,6 +1135,11 @@ function resetNewProject() {
 }
 
 async function copyCurrentProjectLink() {
+  if (IS_STANDALONE) {
+    projectStatus.textContent = "本地单机模式没有协同链接。";
+    return;
+  }
+
   if (!state.projectId) {
     await saveCurrentProject();
   }
@@ -1016,6 +1261,19 @@ boxImageUpload.addEventListener("change", async (event) => {
   state.contentImageData = result.dataUrl;
   clearPreviewImages();
   render();
+});
+
+csvUpload.addEventListener("change", async (event) => {
+  const [file] = event.target.files;
+  if (!file) {
+    return;
+  }
+
+  try {
+    await importCsvFile(file);
+  } catch (error) {
+    translationStatus.textContent = error.message;
+  }
 });
 
 titleInput.addEventListener("input", (event) => {
@@ -1154,7 +1412,7 @@ async function init() {
   render();
   await loadProjectList();
 
-  const projectId = new URL(window.location.href).searchParams.get("project");
+  const projectId = IS_STANDALONE ? "" : new URL(window.location.href).searchParams.get("project");
   if (projectId) {
     await loadProjectById(projectId);
   }

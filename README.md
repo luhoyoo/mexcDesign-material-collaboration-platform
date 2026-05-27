@@ -11,6 +11,7 @@
 - 多语言海报预览
 - 一键打包下载全部语言 PNG
 - 无登录项目协同链接
+- CSV 多语言主标题和副标题导入
 
 ## 本地启动
 
@@ -38,7 +39,7 @@ curl http://127.0.0.1:4173/healthz
 
 ## 数据存储
 
-项目数据默认保存在：
+本地启动时，项目数据默认保存在：
 
 ```text
 data/projects.json
@@ -48,5 +49,4 @@ data/projects.json
 
 ## 部署
 
-详细说明见 [DEPLOY.md](./DEPLOY.md)。
-
+Vercel 线上版使用 Vercel Blob 保存协同项目；详细步骤见 [DEPLOY.md](./DEPLOY.md)。
