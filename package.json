@@ -13,6 +13,7 @@
     "node": "22.x"
   },
   "dependencies": {
-    "@vercel/blob": "^2.3.0"
+    "@vercel/blob": "^2.3.0",
+    "konva": "^10.3.0"
   }
 }

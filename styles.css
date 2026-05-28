@@ -317,10 +317,12 @@ button.primary:hover {
   touch-action: none;
 }
 
-#previewCanvas {
+.konva-stage,
+.konva-stage .konvajs-content,
+.konva-stage canvas {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .overlay-box {

@@ -57,9 +57,8 @@ const MYMEMORY_LANGUAGE_CODES = {
   "zh-Hant": "zh-TW",
 };
 
-const canvas = document.querySelector("#previewCanvas");
-const ctx = canvas.getContext("2d");
 const stage = document.querySelector("#stage");
+const konvaContainer = document.querySelector("#konvaStage");
 const imageBox = document.querySelector("#imageBox");
 const titleBox = document.querySelector("#titleBox");
 const subtitleBox = document.querySelector("#subtitleBox");
@@ -95,6 +94,10 @@ const newProject = document.querySelector("#newProject");
 const saveProject = document.querySelector("#saveProject");
 const copyProjectLink = document.querySelector("#copyProjectLink");
 const projectStatus = document.querySelector("#projectStatus");
+const measureCanvas = document.createElement("canvas");
+const measureContext = measureCanvas.getContext("2d");
+let posterStage = null;
+let posterLayer = null;
 
 if (IS_STANDALONE) {
   document.body.classList.add("standalone-mode");
@@ -218,7 +221,25 @@ function toggleApiFields() {
   apiConfigPanel.classList.toggle("openai-hidden", translationProvider.value !== "openai");
 }
 
-function drawCover(image, x, y, width, height) {
+function initKonvaStage() {
+  if (posterStage) {
+    return;
+  }
+
+  if (!window.Konva) {
+    throw new Error("Konva.js 未加载，请确认 vendor/konva.min.js 存在。");
+  }
+
+  posterStage = new Konva.Stage({
+    container: konvaContainer,
+    width: CANVAS_SIZE,
+    height: CANVAS_SIZE,
+  });
+  posterLayer = new Konva.Layer();
+  posterStage.add(posterLayer);
+}
+
+function getCoverCrop(image, width, height) {
   const sourceRatio = image.width / image.height;
   const targetRatio = width / height;
   let sourceWidth = image.width;
@@ -234,22 +255,57 @@ function drawCover(image, x, y, width, height) {
     sourceY = (image.height - sourceHeight) / 2;
   }
 
-  ctx.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
+  return {
+    x: sourceX,
+    y: sourceY,
+    width: sourceWidth,
+    height: sourceHeight,
+  };
 }
 
-function drawPlaceholder() {
-  const gradient = ctx.createLinearGradient(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-  gradient.addColorStop(0, "#f7f9fb");
-  gradient.addColorStop(0.48, "#ffffff");
-  gradient.addColorStop(1, "#dfe7eb");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+function createCoverImageNode(image, x, y, width, height) {
+  return new Konva.Image({
+    image,
+    x,
+    y,
+    width,
+    height,
+    crop: getCoverCrop(image, width, height),
+  });
+}
 
-  ctx.fillStyle = "rgba(16,24,32,0.35)";
-  ctx.font = "700 34px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("上传 1:1 底图", CANVAS_SIZE / 2, CANVAS_SIZE * 0.1);
+function createPlaceholderNode() {
+  const group = new Konva.Group();
+  group.add(new Konva.Rect({
+    x: 0,
+    y: 0,
+    width: CANVAS_SIZE,
+    height: CANVAS_SIZE,
+    fillLinearGradientStartPoint: { x: 0, y: 0 },
+    fillLinearGradientEndPoint: { x: CANVAS_SIZE, y: CANVAS_SIZE },
+    fillLinearGradientColorStops: [
+      0,
+      "#f7f9fb",
+      0.48,
+      "#ffffff",
+      1,
+      "#dfe7eb",
+    ],
+  }));
+  group.add(new Konva.Text({
+    x: 0,
+    y: CANVAS_SIZE * 0.1 - 20,
+    width: CANVAS_SIZE,
+    height: 44,
+    text: "上传 1:1 底图",
+    fill: "rgba(16,24,32,0.35)",
+    fontFamily: "system-ui, sans-serif",
+    fontSize: 34,
+    fontStyle: "bold",
+    align: "center",
+    verticalAlign: "middle",
+  }));
+  return group;
 }
 
 function wrapText(text, maxWidth) {
@@ -260,7 +316,7 @@ function wrapText(text, maxWidth) {
     let line = "";
     Array.from(paragraph).forEach((char) => {
       const nextLine = line + char;
-      if (ctx.measureText(nextLine).width > maxWidth && line) {
+      if (measureContext.measureText(nextLine).width > maxWidth && line) {
         lines.push(line);
         line = char;
       } else {
@@ -274,10 +330,8 @@ function wrapText(text, maxWidth) {
 }
 
 function getWrappedLines(text, options, maxWidth) {
-  ctx.save();
-  ctx.font = `${options.weight} ${options.size}px ${options.font}`;
+  measureContext.font = `${options.weight} ${options.size}px ${options.font}`;
   const lines = wrapText(text || " ", maxWidth);
-  ctx.restore();
   return lines;
 }
 
@@ -377,64 +431,86 @@ function getSubtitleOptions() {
   };
 }
 
-function drawTextLayer(box, text, options) {
-  if (!text.trim()) {
+function addTextLayer(box, text, options) {
+  const textValue = String(text || "");
+  if (!textValue.trim()) {
     return;
   }
 
   const rect = boxToCanvasRect(box);
-  const lineHeight = options.size * options.lineHeight;
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(rect.x, rect.y, rect.width, rect.height);
-  ctx.clip();
-  ctx.fillStyle = options.color;
-  ctx.font = `${options.weight} ${options.size}px ${options.font}`;
-  ctx.direction = options.direction || "ltr";
-  ctx.textAlign = options.direction === "rtl" ? "right" : "left";
-  ctx.textBaseline = "top";
-
-  const lines = wrapText(text, rect.width);
-  const textX = options.direction === "rtl" ? rect.x + rect.width : rect.x;
-  lines.forEach((line, index) => {
-    const y = rect.y + index * lineHeight;
-    if (y + lineHeight <= rect.y + rect.height + 2) {
-      ctx.fillText(line, textX, y);
-    }
+  measureContext.font = `${options.weight} ${options.size}px ${options.font}`;
+  const lines = wrapText(textValue, rect.width);
+  const group = new Konva.Group({
+    x: rect.x,
+    y: rect.y,
+    clip: {
+      x: 0,
+      y: 0,
+      width: rect.width,
+      height: rect.height,
+    },
   });
-  ctx.restore();
+
+  const lineHeight = options.size * options.lineHeight;
+  lines.forEach((line, index) => {
+    const y = index * lineHeight;
+    if (y + lineHeight > rect.height + 2) {
+      return;
+    }
+
+    group.add(new Konva.Text({
+      x: 0,
+      y,
+      width: rect.width,
+      height: lineHeight,
+      text: line,
+      fill: options.color,
+      fontFamily: options.font,
+      fontSize: options.size,
+      fontStyle: options.weight >= 700 ? "bold" : "normal",
+      lineHeight: options.lineHeight,
+      align: options.direction === "rtl" ? "right" : "left",
+      verticalAlign: "top",
+      wrap: "none",
+    }));
+  });
+  posterLayer.add(group);
 }
 
-function drawImageBox() {
+function addImageBoxLayer() {
   if (!state.contentImage) {
     return;
   }
 
   const rect = boxToCanvasRect(imageBox);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(rect.x, rect.y, rect.width, rect.height);
-  ctx.clip();
-  drawCover(state.contentImage, rect.x, rect.y, rect.width, rect.height);
-  ctx.restore();
+  posterLayer.add(createCoverImageNode(state.contentImage, rect.x, rect.y, rect.width, rect.height));
 }
 
 function render() {
+  initKonvaStage();
   const variant = getActiveVariant();
   const language = getLanguage(state.activeLanguage);
   applyFixedTextLayout();
-  ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  posterLayer.destroyChildren();
 
   if (state.baseImage) {
-    drawCover(state.baseImage, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    posterLayer.add(createCoverImageNode(state.baseImage, 0, 0, CANVAS_SIZE, CANVAS_SIZE));
   } else {
-    drawPlaceholder();
+    posterLayer.add(createPlaceholderNode());
   }
 
-  drawImageBox();
-  drawTextLayer(titleBox, variant.title, { ...getTitleOptions(), direction: language.dir });
-  drawTextLayer(subtitleBox, variant.subtitle, { ...getSubtitleOptions(), direction: language.dir });
+  addImageBoxLayer();
+  addTextLayer(titleBox, variant.title, { ...getTitleOptions(), direction: language.dir });
+  addTextLayer(subtitleBox, variant.subtitle, { ...getSubtitleOptions(), direction: language.dir });
+  posterLayer.batchDraw();
+}
+
+function getPosterDataUrl() {
+  render();
+  return posterStage.toDataURL({
+    mimeType: "image/png",
+    pixelRatio: 1,
+  });
 }
 
 function setBoxLayout(box, layout) {
@@ -746,10 +822,9 @@ async function generateLanguageVariants() {
 }
 
 function downloadCurrentImage(filename) {
-  render();
   const link = document.createElement("a");
   link.download = filename;
-  link.href = canvas.toDataURL("image/png");
+  link.href = getPosterDataUrl();
   link.click();
 }
 
@@ -776,7 +851,7 @@ async function exportAllLanguages() {
     render();
     files.push({
       name: filenameForLanguage(language),
-      data: dataUrlToBytes(canvas.toDataURL("image/png")),
+      data: dataUrlToBytes(getPosterDataUrl()),
     });
     await wait(30);
   }
@@ -1157,8 +1232,7 @@ async function refreshPreviewImagesForAllLanguages() {
   for (const language of LANGUAGES) {
     state.activeLanguage = language.code;
     languageSelect.value = language.code;
-    render();
-    state.previewImages[language.code] = canvas.toDataURL("image/png");
+    state.previewImages[language.code] = getPosterDataUrl();
     await wait(20);
   }
 

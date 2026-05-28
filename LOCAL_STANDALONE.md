@@ -31,5 +31,7 @@
 index.html
 styles.css
 app.js
+vendor/konva.min.js
+vendor/KONVA-LICENSE.txt
 LOCAL_STANDALONE.md
 ```
