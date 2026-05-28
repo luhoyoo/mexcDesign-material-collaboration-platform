@@ -14,8 +14,8 @@
 1. 将代码推送到 GitHub 仓库。
 2. 在 Vercel 选择 `Add New > Project`，导入该 GitHub 仓库。
 3. 保持 Framework Preset 为 `Other`，然后完成首次部署。
-4. 进入项目页面的 `Storage`，创建并连接一个 Blob store。
-5. Vercel 会为项目增加 `BLOB_READ_WRITE_TOKEN` 环境变量；重新部署一次。
+4. 进入项目页面的 `Storage`，创建并连接一个 Private Blob store。
+5. Vercel 会为生产环境增加 `BLOB_READ_WRITE_TOKEN` 环境变量；重新部署一次。
 6. 打开线上域名，点击 `新建项目` 和 `保存项目` 验证协同链接。
 
 ### 翻译配置

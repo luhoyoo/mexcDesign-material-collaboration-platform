@@ -7,3 +7,5 @@ data/projects.json
 *.gitbundle
 mexcDesign-material-collaboration-platform-source/
 .vercel/
+.vercel
+.env*
