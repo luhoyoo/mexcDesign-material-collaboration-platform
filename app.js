@@ -11,7 +11,14 @@ const IMAGE_LAYOUT = {
   width: 750,
   height: 566,
 };
-let LANGUAGES = [
+const RESOURCE_PRESETS = {
+  "square-1200": {
+    label: "1:1 海报 · 1200 × 1200",
+    width: 1200,
+    height: 1200,
+  },
+};
+const ALL_LANGUAGES = [
   { code: "en", csvCodes: ["en-US", "en"], name: "English", target: "English", dir: "ltr" },
   { code: "zh-Hant", csvCodes: ["zh-TW", "zh-Hant"], name: "繁体中文", target: "Traditional Chinese", dir: "ltr" },
   { code: "zh-Hans", csvCodes: ["zh-CN", "zh-Hans"], name: "简体中文", target: "Simplified Chinese", dir: "ltr" },
@@ -35,6 +42,7 @@ let LANGUAGES = [
   { code: "fr", csvCodes: ["fr-FR", "fr"], name: "Français", target: "French", dir: "ltr" },
   { code: "th", csvCodes: ["th-TH", "th"], name: "ไทย", target: "Thai", dir: "ltr" },
 ];
+let LANGUAGES = [...ALL_LANGUAGES];
 const IS_STANDALONE = window.location.protocol === "file:";
 const MYMEMORY_LANGUAGE_CODES = {
   ar: "ar",
@@ -58,6 +66,8 @@ const MYMEMORY_LANGUAGE_CODES = {
 };
 
 const stage = document.querySelector("#stage");
+const canvasViewport = document.querySelector("#canvasViewport");
+const canvasWorld = document.querySelector("#canvasWorld");
 const konvaContainer = document.querySelector("#konvaStage");
 const imageBox = document.querySelector("#imageBox");
 const titleBox = document.querySelector("#titleBox");
@@ -77,8 +87,16 @@ const exportImage = document.querySelector("#exportImage");
 const languageSelect = document.querySelector("#languageSelect");
 const generateLanguages = document.querySelector("#generateLanguages");
 const exportAll = document.querySelector("#exportAll");
+const exportAllFooter = document.querySelector("#exportAllFooter");
 const translationStatus = document.querySelector("#translationStatus");
 const languageList = document.querySelector("#languageList");
+const languageCount = document.querySelector("#languageCount");
+const canvasLanguageName = document.querySelector("#canvasLanguageName");
+const activeLanguageName = document.querySelector("#activeLanguageName");
+const activeTitleInput = document.querySelector("#activeTitleInput");
+const activeSubtitleInput = document.querySelector("#activeSubtitleInput");
+const activeReviewStatus = document.querySelector("#activeReviewStatus");
+const activeNoteInput = document.querySelector("#activeNoteInput");
 const csvUpload = document.querySelector("#csvUpload");
 const translationProvider = document.querySelector("#translationProvider");
 const apiConfigPanel = document.querySelector(".api-config");
@@ -94,10 +112,29 @@ const newProject = document.querySelector("#newProject");
 const saveProject = document.querySelector("#saveProject");
 const copyProjectLink = document.querySelector("#copyProjectLink");
 const projectStatus = document.querySelector("#projectStatus");
+const confirmProgress = document.querySelector("#confirmProgress");
+const zoomOut = document.querySelector("#zoomOut");
+const zoomIn = document.querySelector("#zoomIn");
+const zoomLabel = document.querySelector("#zoomLabel");
+const resetCanvasView = document.querySelector("#resetCanvasView");
+const projectWizard = document.querySelector("#projectWizard");
+const closeProjectWizard = document.querySelector("#closeProjectWizard");
+const wizardProjectName = document.querySelector("#wizardProjectName");
+const resourcePreset = document.querySelector("#resourcePreset");
+const wizardLanguageList = document.querySelector("#wizardLanguageList");
+const selectAllLanguages = document.querySelector("#selectAllLanguages");
+const clearLanguages = document.querySelector("#clearLanguages");
+const createProjectFromWizard = document.querySelector("#createProjectFromWizard");
 const measureCanvas = document.createElement("canvas");
 const measureContext = measureCanvas.getContext("2d");
 let posterStage = null;
 let posterLayer = null;
+let wizardSelectedLanguageCodes = [];
+const canvasView = {
+  x: 0,
+  y: 0,
+  scale: 1,
+};
 
 if (IS_STANDALONE) {
   document.body.classList.add("standalone-mode");
@@ -107,6 +144,9 @@ const state = {
   projectId: "",
   projectList: [],
   projectName: projectNameInput.value,
+  resourcePreset: "square-1200",
+  selectedLanguageCodes: ALL_LANGUAGES.map((language) => language.code),
+  progressStatus: "制作中",
   baseImage: null,
   baseImageData: "",
   contentImage: null,
@@ -181,8 +221,50 @@ function getLanguage(code) {
   return LANGUAGES.find((language) => language.code === code) || LANGUAGES[0];
 }
 
+function syncLanguageScope() {
+  const selectedCodes = state.selectedLanguageCodes.length
+    ? state.selectedLanguageCodes
+    : ["en"];
+  LANGUAGES = ALL_LANGUAGES.filter((language) => selectedCodes.includes(language.code));
+  if (!LANGUAGES.length) {
+    LANGUAGES = [ALL_LANGUAGES[0]];
+    state.selectedLanguageCodes = ["en"];
+  }
+  if (!LANGUAGES.some((language) => language.code === state.activeLanguage)) {
+    state.activeLanguage = LANGUAGES[0].code;
+  }
+}
+
+function getSelectedLanguageCodesFromWizard() {
+  const selectedCodes = Array.from(
+    wizardLanguageList.querySelectorAll("input[type='checkbox']:checked"),
+  ).map((input) => input.value);
+  return selectedCodes.includes("en") ? selectedCodes : ["en", ...selectedCodes];
+}
+
 function getActiveVariant() {
   return state.variants[state.activeLanguage] || state.variants.en;
+}
+
+function getFallbackVariant(code) {
+  return {
+    title: state.sourceTitle,
+    subtitle: state.sourceSubtitle,
+    reviewStatus: code === "en" ? "已确认" : "待检查",
+    note: "",
+    status: code === "en" ? "源文案" : "待生成",
+  };
+}
+
+function getVariantForLanguage(code) {
+  return state.variants[code] || getFallbackVariant(code);
+}
+
+function ensureVariantForLanguage(code) {
+  if (!state.variants[code]) {
+    state.variants[code] = getFallbackVariant(code);
+  }
+  return state.variants[code];
 }
 
 function syncEnglishVariant() {
@@ -533,6 +615,55 @@ function resetBoxes() {
   render();
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function applyCanvasView() {
+  canvasWorld.style.transform = `translate(${canvasView.x}px, ${canvasView.y}px) scale(${canvasView.scale})`;
+  zoomLabel.textContent = `${Math.round(canvasView.scale * 100)}%`;
+}
+
+function fitCanvasView() {
+  const viewportWidth = canvasViewport.clientWidth;
+  const viewportHeight = canvasViewport.clientHeight;
+  const stageWidth = stage.offsetWidth;
+  const stageHeight = stage.offsetHeight;
+  const nextScale = clamp(
+    Math.min(1, (viewportWidth - 144) / stageWidth, (viewportHeight - 150) / stageHeight),
+    0.35,
+    1,
+  );
+
+  canvasView.scale = nextScale;
+  canvasView.x = Math.round((viewportWidth - stageWidth * nextScale) / 2);
+  canvasView.y = Math.round((viewportHeight - stageHeight * nextScale) / 2 + 24);
+  applyCanvasView();
+}
+
+function zoomCanvasAt(nextScale, clientX, clientY) {
+  const scale = clamp(nextScale, 0.25, 2.5);
+  const viewportRect = canvasViewport.getBoundingClientRect();
+  const pointerX = clientX - viewportRect.left;
+  const pointerY = clientY - viewportRect.top;
+  const worldX = (pointerX - canvasView.x) / canvasView.scale;
+  const worldY = (pointerY - canvasView.y) / canvasView.scale;
+
+  canvasView.scale = scale;
+  canvasView.x = pointerX - worldX * scale;
+  canvasView.y = pointerY - worldY * scale;
+  applyCanvasView();
+}
+
+function zoomFromCenter(multiplier) {
+  const rect = canvasViewport.getBoundingClientRect();
+  zoomCanvasAt(
+    canvasView.scale * multiplier,
+    rect.left + rect.width / 2,
+    rect.top + rect.height / 2,
+  );
+}
+
 function fillLanguageSelect() {
   languageSelect.innerHTML = LANGUAGES.map(
     (language) =>
@@ -541,35 +672,66 @@ function fillLanguageSelect() {
   languageSelect.value = state.activeLanguage;
 }
 
-function renderLanguageList() {
-  languageList.innerHTML = LANGUAGES.map((language) => {
-    const variant = state.variants[language.code] || {
-      title: state.sourceTitle,
-      subtitle: state.sourceSubtitle,
-      reviewStatus: "待检查",
-      note: "",
-      status: "待生成",
-    };
-    const activeClass = language.code === state.activeLanguage ? " active" : "";
+function renderWizardLanguageList() {
+  wizardLanguageList.innerHTML = ALL_LANGUAGES.map((language) => {
+    const checked = wizardSelectedLanguageCodes.includes(language.code) ? " checked" : "";
+    const disabled = language.code === "en" ? " disabled" : "";
     return `
-      <article class="language-card${activeClass}" data-code="${language.code}">
-        <div class="language-card-head">
-          <span>${language.name}</span>
-          <span class="language-status">${variant.status || "已生成"}</span>
-        </div>
-        <textarea data-field="title" rows="3">${escapeHtml(variant.title)}</textarea>
-        <input data-field="subtitle" type="text" value="${escapeHtml(variant.subtitle)}" />
-        <div class="language-review-row">
-          <select data-field="reviewStatus">
-            <option value="待检查"${variant.reviewStatus === "待检查" ? " selected" : ""}>待检查</option>
-            <option value="已确认"${variant.reviewStatus === "已确认" ? " selected" : ""}>已确认</option>
-            <option value="需修改"${variant.reviewStatus === "需修改" ? " selected" : ""}>需修改</option>
-          </select>
-          <input data-field="note" type="text" value="${escapeHtml(variant.note || "")}" placeholder="翻译备注" />
-        </div>
-      </article>
+      <label class="wizard-language-option">
+        <input type="checkbox" value="${language.code}"${checked}${disabled} />
+        <span>${language.name}</span>
+      </label>
     `;
   }).join("");
+}
+
+function openProjectWizard() {
+  wizardProjectName.value = state.projectName || "MEXC 海报项目";
+  resourcePreset.value = state.resourcePreset;
+  wizardSelectedLanguageCodes = [...state.selectedLanguageCodes];
+  renderWizardLanguageList();
+  projectWizard.hidden = false;
+  wizardProjectName.focus();
+}
+
+function closeWizard() {
+  projectWizard.hidden = true;
+}
+
+function refreshProjectChrome() {
+  confirmProgress.textContent = state.progressStatus === "已完成" ? "已完成" : "确认完成";
+  confirmProgress.classList.toggle("primary", state.progressStatus === "已完成");
+  projectSelect.value = state.projectId;
+}
+
+function renderLanguageList() {
+  if (languageCount) {
+    languageCount.textContent = String(LANGUAGES.length);
+  }
+  const activeLanguage = getLanguage(state.activeLanguage);
+  if (canvasLanguageName) {
+    canvasLanguageName.textContent = activeLanguage.name;
+  }
+  languageList.innerHTML = LANGUAGES.map((language) => {
+    const activeClass = language.code === state.activeLanguage ? " active" : "";
+    return `
+      <button class="language-card${activeClass}" type="button" data-code="${language.code}">
+        <span class="layer-icon">${escapeHtml(language.code.slice(0, 2).toUpperCase())}</span>
+        <span class="language-name">${language.name}</span>
+      </button>
+    `;
+  }).join("");
+  renderActiveLanguageEditor();
+}
+
+function renderActiveLanguageEditor() {
+  const language = getLanguage(state.activeLanguage);
+  const variant = getVariantForLanguage(language.code);
+  activeLanguageName.textContent = language.name;
+  activeTitleInput.value = variant.title || "";
+  activeSubtitleInput.value = variant.subtitle || "";
+  activeReviewStatus.value = variant.reviewStatus || "待检查";
+  activeNoteInput.value = variant.note || "";
 }
 
 function renderPosterPreviewGrid() {
@@ -841,6 +1003,7 @@ function wait(ms) {
 async function exportAllLanguages() {
   const previousLanguage = state.activeLanguage;
   exportAll.disabled = true;
+  exportAllFooter.disabled = true;
   translationStatus.textContent = "正在生成 ZIP 压缩包...";
   const files = [];
 
@@ -863,6 +1026,7 @@ async function exportAllLanguages() {
   renderPosterPreviewGrid();
   render();
   exportAll.disabled = false;
+  exportAllFooter.disabled = false;
   translationStatus.textContent = "ZIP 压缩包已生成。";
 }
 
@@ -1044,6 +1208,9 @@ function buildProjectData() {
     sourceSubtitle: state.sourceSubtitle,
     variants: state.variants,
     activeLanguage: state.activeLanguage,
+    resourcePreset: state.resourcePreset,
+    selectedLanguageCodes: state.selectedLanguageCodes,
+    progressStatus: state.progressStatus,
     imageLayout: getImageBoxLayout(),
     style: {
       titleFont: state.titleFont,
@@ -1069,7 +1236,11 @@ async function applyProjectData(project) {
   state.sourceTitle = data.sourceTitle || titleInput.value;
   state.sourceSubtitle = data.sourceSubtitle || subtitleInput.value;
   state.variants = data.variants || {};
+  state.resourcePreset = data.resourcePreset || "square-1200";
+  state.selectedLanguageCodes = data.selectedLanguageCodes || ALL_LANGUAGES.map((language) => language.code);
+  state.progressStatus = data.progressStatus || "制作中";
   state.activeLanguage = data.activeLanguage || "en";
+  syncLanguageScope();
 
   const style = data.style || {};
   state.titleFont = style.titleFont || state.titleFont;
@@ -1087,7 +1258,9 @@ async function applyProjectData(project) {
   subtitleFont.value = state.subtitleFont;
   subtitleSize.value = state.subtitleSize;
   subtitleColor.value = state.subtitleColor;
+  fillLanguageSelect();
   languageSelect.value = state.activeLanguage;
+  refreshProjectChrome();
 
   if (data.imageLayout) {
     setBoxLayoutPx(imageBox, data.imageLayout);
@@ -1106,6 +1279,7 @@ async function loadProjectList() {
   if (IS_STANDALONE) {
     projectSelect.innerHTML = '<option value="">本地单机模式</option>';
     projectStatus.textContent = "本地单机模式：无需服务器，不保存协同项目。";
+    refreshProjectChrome();
     return;
   }
 
@@ -1123,6 +1297,7 @@ async function loadProjectList() {
     )),
   ].join("");
   projectSelect.value = state.projectId;
+  refreshProjectChrome();
 }
 
 async function saveCurrentProject() {
@@ -1182,9 +1357,15 @@ function setProjectUrl(projectId) {
   window.history.replaceState({}, "", url);
 }
 
-function resetNewProject() {
+function createNewProject(config = {}) {
   state.projectId = "";
-  state.projectName = "MEXC 海报项目";
+  state.projectName = config.name || "MEXC 海报项目";
+  state.resourcePreset = config.resourcePreset || "square-1200";
+  state.selectedLanguageCodes = config.selectedLanguageCodes?.length
+    ? config.selectedLanguageCodes
+    : ALL_LANGUAGES.map((language) => language.code);
+  state.progressStatus = "制作中";
+  syncLanguageScope();
   projectNameInput.value = state.projectName;
   state.baseImage = null;
   state.baseImageData = "";
@@ -1193,9 +1374,12 @@ function resetNewProject() {
   state.sourceTitle = "Equip the\n$100,000 Exo Suit";
   state.sourceSubtitle = "Epic Gear Arena S3";
   state.variants = {};
-  state.activeLanguage = "en";
+  state.activeLanguage = LANGUAGES.some((language) => language.code === "en")
+    ? "en"
+    : LANGUAGES[0].code;
   titleInput.value = state.sourceTitle;
   subtitleInput.value = state.sourceSubtitle;
+  fillLanguageSelect();
   languageSelect.value = state.activeLanguage;
   syncEnglishVariant();
   resetBoxes();
@@ -1203,10 +1387,21 @@ function resetNewProject() {
   renderLanguageList();
   renderPosterPreviewGrid();
   render();
+  refreshProjectChrome();
   const url = new URL(window.location.href);
   url.searchParams.delete("project");
   window.history.replaceState({}, "", url);
   projectStatus.textContent = "已新建项目，保存后即可分享协同链接。";
+}
+
+function submitProjectWizard() {
+  const selectedLanguageCodes = getSelectedLanguageCodesFromWizard();
+  createNewProject({
+    name: wizardProjectName.value.trim() || "MEXC 海报项目",
+    resourcePreset: resourcePreset.value,
+    selectedLanguageCodes,
+  });
+  closeWizard();
 }
 
 async function copyCurrentProjectLink() {
@@ -1222,6 +1417,17 @@ async function copyCurrentProjectLink() {
   url.searchParams.set("project", state.projectId);
   await navigator.clipboard.writeText(url.toString());
   projectStatus.textContent = "协同链接已复制。";
+}
+
+async function toggleProgressConfirmation() {
+  state.progressStatus = state.progressStatus === "已完成" ? "制作中" : "已完成";
+  refreshProjectChrome();
+  projectStatus.textContent = state.progressStatus === "已完成"
+    ? "项目进度已确认完成。"
+    : "项目状态已改回制作中。";
+  if (state.projectId && !IS_STANDALONE) {
+    await saveCurrentProject();
+  }
 }
 
 async function refreshPreviewImagesForAllLanguages() {
@@ -1415,9 +1621,10 @@ projectNameInput.addEventListener("input", (event) => {
   state.projectName = event.target.value;
 });
 
-newProject.addEventListener("click", resetNewProject);
+newProject.addEventListener("click", openProjectWizard);
 saveProject.addEventListener("click", saveCurrentProject);
 copyProjectLink.addEventListener("click", copyCurrentProjectLink);
+confirmProgress.addEventListener("click", toggleProgressConfirmation);
 projectSelect.addEventListener("input", (event) => {
   loadProjectById(event.target.value);
 });
@@ -1425,11 +1632,13 @@ projectSelect.addEventListener("input", (event) => {
 languageSelect.addEventListener("input", (event) => {
   state.activeLanguage = event.target.value;
   renderLanguageList();
+  renderPosterPreviewGrid();
   render();
 });
 
 generateLanguages.addEventListener("click", generateLanguageVariants);
 exportAll.addEventListener("click", exportAllLanguages);
+exportAllFooter.addEventListener("click", exportAllLanguages);
 saveApiConfig.addEventListener("click", saveCurrentApiConfig);
 translationProvider.addEventListener("input", saveCurrentApiConfig);
 refreshPreviews.addEventListener("click", refreshPreviewImagesForAllLanguages);
@@ -1447,43 +1656,149 @@ posterPreviewGrid.addEventListener("click", (event) => {
   render();
 });
 
-languageList.addEventListener("input", (event) => {
+languageList.addEventListener("click", (event) => {
   const card = event.target.closest(".language-card");
   if (!card) {
     return;
   }
 
-  const code = card.dataset.code;
-  const field = event.target.dataset.field;
-  state.variants[code] = {
-    ...(state.variants[code] || { title: "", subtitle: "", status: "已编辑" }),
-    [field]: event.target.value,
-    status: code === "en" ? "源文案" : "已编辑",
-  };
+  state.activeLanguage = card.dataset.code;
+  languageSelect.value = state.activeLanguage;
+  renderLanguageList();
+  renderPosterPreviewGrid();
+  render();
+});
 
-  if (code === "en") {
-    state.sourceTitle = state.variants.en.title;
-    state.sourceSubtitle = state.variants.en.subtitle;
+function updateActiveVariantField(field, value) {
+  const code = state.activeLanguage;
+  const variant = ensureVariantForLanguage(code);
+  variant[field] = value;
+  variant.status = code === "en" ? "源文案" : "已编辑";
+
+  if (code === "en" && (field === "title" || field === "subtitle")) {
+    state.sourceTitle = variant.title;
+    state.sourceSubtitle = variant.subtitle;
     titleInput.value = state.sourceTitle;
     subtitleInput.value = state.sourceSubtitle;
   }
 
-  if (code === state.activeLanguage) {
-    render();
-  }
   delete state.previewImages[code];
+  renderLanguageList();
   renderPosterPreviewGrid();
+  render();
+}
+
+activeTitleInput.addEventListener("input", (event) => {
+  updateActiveVariantField("title", event.target.value);
 });
+
+activeSubtitleInput.addEventListener("input", (event) => {
+  updateActiveVariantField("subtitle", event.target.value);
+});
+
+activeReviewStatus.addEventListener("input", (event) => {
+  updateActiveVariantField("reviewStatus", event.target.value);
+});
+
+activeNoteInput.addEventListener("input", (event) => {
+  updateActiveVariantField("note", event.target.value);
+});
+
+let canvasPan = null;
+canvasViewport.addEventListener("pointerdown", (event) => {
+  if (
+    event.target.closest(".stage")
+    || event.target.closest(".canvas-toolbar")
+    || event.target.closest(".canvas-zoom-controls")
+  ) {
+    return;
+  }
+
+  canvasPan = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    viewX: canvasView.x,
+    viewY: canvasView.y,
+  };
+  canvasViewport.classList.add("is-panning");
+  canvasViewport.setPointerCapture(event.pointerId);
+});
+
+canvasViewport.addEventListener("pointermove", (event) => {
+  if (!canvasPan) {
+    return;
+  }
+
+  canvasView.x = canvasPan.viewX + event.clientX - canvasPan.startX;
+  canvasView.y = canvasPan.viewY + event.clientY - canvasPan.startY;
+  applyCanvasView();
+});
+
+function stopCanvasPan() {
+  canvasPan = null;
+  canvasViewport.classList.remove("is-panning");
+}
+
+canvasViewport.addEventListener("pointerup", stopCanvasPan);
+canvasViewport.addEventListener("pointercancel", stopCanvasPan);
+
+canvasViewport.addEventListener("wheel", (event) => {
+  event.preventDefault();
+  if (event.ctrlKey || event.metaKey) {
+    zoomCanvasAt(canvasView.scale * (event.deltaY > 0 ? 0.92 : 1.08), event.clientX, event.clientY);
+    return;
+  }
+
+  canvasView.x -= event.deltaX;
+  canvasView.y -= event.deltaY;
+  applyCanvasView();
+}, { passive: false });
+
+zoomOut.addEventListener("click", () => {
+  zoomFromCenter(0.85);
+});
+
+zoomIn.addEventListener("click", () => {
+  zoomFromCenter(1.15);
+});
+
+resetCanvasView.addEventListener("click", fitCanvasView);
+
+closeProjectWizard.addEventListener("click", closeWizard);
+projectWizard.addEventListener("click", (event) => {
+  if (event.target === projectWizard) {
+    closeWizard();
+  }
+});
+selectAllLanguages.addEventListener("click", () => {
+  wizardSelectedLanguageCodes = ALL_LANGUAGES.map((language) => language.code);
+  renderWizardLanguageList();
+});
+clearLanguages.addEventListener("click", () => {
+  wizardSelectedLanguageCodes = ["en"];
+  renderWizardLanguageList();
+});
+wizardLanguageList.addEventListener("input", () => {
+  wizardSelectedLanguageCodes = getSelectedLanguageCodesFromWizard();
+});
+createProjectFromWizard.addEventListener("click", submitProjectWizard);
+window.addEventListener("resize", fitCanvasView);
 
 enableBoxEditing(imageBox);
 init();
 
 async function init() {
+  syncLanguageScope();
   syncEnglishVariant();
   fillLanguageSelect();
+  wizardSelectedLanguageCodes = [...state.selectedLanguageCodes];
+  renderWizardLanguageList();
+  refreshProjectChrome();
   renderLanguageList();
   renderPosterPreviewGrid();
   render();
+  window.requestAnimationFrame(fitCanvasView);
   await loadProjectList();
 
   const projectId = IS_STANDALONE ? "" : new URL(window.location.href).searchParams.get("project");

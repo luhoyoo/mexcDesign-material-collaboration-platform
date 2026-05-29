@@ -8,27 +8,112 @@
   </head>
   <body>
     <main class="app-shell">
-      <section class="tool-panel" aria-label="图片生成设置">
-        <div class="panel-head">
-          <h1>海报协同工作台</h1>
-          <p>设计上传素材，业务生成多语言，翻译确认文案，最后一键打包导出。</p>
-        </div>
-
+      <aside class="layers-panel" aria-label="语言图层">
         <section class="project-tools" aria-label="项目协同">
           <div class="control-group">
-            <label for="projectNameInput">项目名称</label>
-            <input id="projectNameInput" type="text" value="MEXC 海报项目" />
-          </div>
-          <div class="control-group">
-            <label for="projectSelect">打开项目</label>
+            <label for="projectSelect">项目</label>
             <select id="projectSelect"></select>
           </div>
           <div class="button-row">
             <button id="newProject" type="button">新建项目</button>
-            <button id="saveProject" type="button" class="primary">保存项目</button>
+            <button id="saveProject" type="button" class="primary">保存</button>
           </div>
-          <button id="copyProjectLink" type="button">复制协同链接</button>
+          <div class="button-row">
+            <button id="copyProjectLink" type="button">分享链接</button>
+            <button id="confirmProgress" type="button">确认完成</button>
+          </div>
           <p id="projectStatus" class="status-text">当前项目尚未保存。</p>
+        </section>
+
+        <div class="panel-head compact">
+          <h1>语言图层</h1>
+          <p>点击语言切换中间画布。</p>
+        </div>
+        <div class="layers-meta">
+          <span>Locales</span>
+          <strong id="languageCount">22</strong>
+        </div>
+        <div id="languageList" class="language-list" aria-label="多语言图层列表"></div>
+        <div class="layers-footer">
+          <button id="refreshPreviews" type="button">刷新预览</button>
+        </div>
+      </aside>
+
+      <section class="canvas-area" aria-label="编辑画布">
+        <div class="canvas-toolbar">
+          <div>
+            <span class="eyebrow">Canvas</span>
+            <h2 id="canvasLanguageName">English</h2>
+          </div>
+          <button id="exportImage" type="button" class="primary">导出当前 PNG</button>
+        </div>
+        <div class="canvas-zoom-controls" aria-label="画布缩放控制">
+          <button id="zoomOut" type="button" aria-label="缩小">−</button>
+          <span id="zoomLabel">100%</span>
+          <button id="zoomIn" type="button" aria-label="放大">+</button>
+          <button id="resetCanvasView" type="button">适合</button>
+        </div>
+        <div id="canvasViewport" class="canvas-viewport" aria-label="无限画布工作区">
+          <div id="canvasWorld" class="canvas-world">
+            <div id="stage" class="stage">
+              <div id="konvaStage" class="konva-stage" aria-label="Konva 海报画布"></div>
+              <div id="imageBox" class="overlay-box image-box" data-box="image" tabindex="0">
+                <span>图片区域</span>
+                <i></i>
+              </div>
+              <div id="titleBox" class="overlay-box text-layer-box title-box" data-box="title" tabindex="0">
+                <span>主标题区域</span>
+              </div>
+              <div id="subtitleBox" class="overlay-box text-layer-box subtitle-box" data-box="subtitle" tabindex="0">
+                <span>副标题区域</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="posterPreviewGrid" class="poster-preview-grid" hidden></div>
+      </section>
+
+      <aside class="tool-panel" aria-label="图片生成设置">
+        <div class="panel-head">
+          <h1>属性面板</h1>
+          <p>上传底图和物料，调整文字样式，检查当前语言文案并导出整套文件。</p>
+        </div>
+
+        <div class="control-group">
+          <label for="projectNameInput">项目名称</label>
+          <input id="projectNameInput" type="text" value="MEXC 海报项目" />
+        </div>
+
+        <section class="active-language-editor" aria-label="当前语言文案">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow">Selected Layer</span>
+              <h2>当前语言文案</h2>
+            </div>
+            <span id="activeLanguageName" class="section-badge">English</span>
+          </div>
+          <div class="control-group">
+            <label for="activeTitleInput">当前语言主标题</label>
+            <textarea id="activeTitleInput" rows="3"></textarea>
+          </div>
+          <div class="control-group">
+            <label for="activeSubtitleInput">当前语言副标题</label>
+            <input id="activeSubtitleInput" type="text" />
+          </div>
+          <div class="language-review-row">
+            <div class="control-group">
+              <label for="activeReviewStatus">翻译状态</label>
+              <select id="activeReviewStatus">
+                <option value="待检查">待检查</option>
+                <option value="已确认">已确认</option>
+                <option value="需修改">需修改</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label for="activeNoteInput">翻译备注</label>
+              <input id="activeNoteInput" type="text" placeholder="给翻译或业务的备注" />
+            </div>
+          </div>
         </section>
 
         <div class="control-group">
@@ -135,38 +220,45 @@ $100,000 Exo Suit</textarea>
             <button id="exportAll" type="button">打包下载</button>
           </div>
           <p id="translationStatus" class="status-text">英文源文案会同步到 English 版本。</p>
-          <div id="languageList" class="language-list" aria-label="多语言文案列表"></div>
         </div>
 
         <div class="button-row">
           <button id="resetLayout" type="button">重置布局</button>
-          <button id="exportImage" type="button" class="primary">导出 PNG</button>
+          <button id="exportAllFooter" type="button" class="primary">打包下载</button>
         </div>
-      </section>
-
-      <section class="canvas-area" aria-label="编辑画布">
-        <div id="stage" class="stage">
-          <div id="konvaStage" class="konva-stage" aria-label="Konva 海报画布"></div>
-          <div id="imageBox" class="overlay-box image-box" data-box="image" tabindex="0">
-            <span>图片区域</span>
-            <i></i>
-          </div>
-          <div id="titleBox" class="overlay-box text-layer-box title-box" data-box="title" tabindex="0">
-            <span>主标题区域</span>
-          </div>
-          <div id="subtitleBox" class="overlay-box text-layer-box subtitle-box" data-box="subtitle" tabindex="0">
-            <span>副标题区域</span>
-          </div>
-        </div>
-        <section class="poster-preview-panel" aria-label="多语言海报预览">
-          <div class="preview-panel-head">
-            <h2>多语言海报预览</h2>
-            <button id="refreshPreviews" type="button">刷新预览</button>
-          </div>
-          <div id="posterPreviewGrid" class="poster-preview-grid"></div>
-        </section>
-      </section>
+      </aside>
     </main>
+
+    <div id="projectWizard" class="modal-backdrop" hidden>
+      <section class="project-wizard" role="dialog" aria-modal="true" aria-labelledby="projectWizardTitle">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">New Project</span>
+            <h2 id="projectWizardTitle">新建物料项目</h2>
+          </div>
+          <button id="closeProjectWizard" type="button" class="icon-button" aria-label="关闭">×</button>
+        </div>
+        <div class="control-group">
+          <label for="wizardProjectName">项目名称</label>
+          <input id="wizardProjectName" type="text" value="MEXC 海报项目" />
+        </div>
+        <div class="control-group">
+          <label for="resourcePreset">资源位尺寸</label>
+          <select id="resourcePreset">
+            <option value="square-1200" selected>1:1 海报 · 1200 × 1200</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>需要生成的语言</label>
+          <div id="wizardLanguageList" class="wizard-language-list"></div>
+        </div>
+        <div class="button-row">
+          <button id="selectAllLanguages" type="button">全选语言</button>
+          <button id="clearLanguages" type="button">只保留英文</button>
+        </div>
+        <button id="createProjectFromWizard" type="button" class="primary">进入操作页面</button>
+      </section>
+    </div>
 
     <script src="./vendor/konva.min.js"></script>
     <script src="./app.js"></script>

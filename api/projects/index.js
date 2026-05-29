@@ -1,18 +1,10 @@
 const { readBody, rejectMethod, sendJson } = require("../../lib/http");
-const { listProjects, saveProject } = require("../../lib/vercel-project-store");
-
-function createProjectId() {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function projectSummary(project) {
-  return {
-    id: project.id,
-    name: project.name,
-    createdAt: project.createdAt,
-    updatedAt: project.updatedAt,
-  };
-}
+const {
+  createProjectId,
+  listProjects,
+  projectSummary,
+  saveProject,
+} = require("../../lib/project-store");
 
 module.exports = async function handler(request, response) {
   if (rejectMethod(request, response, ["GET", "POST"])) {

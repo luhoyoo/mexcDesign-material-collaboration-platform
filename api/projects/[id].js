@@ -1,5 +1,5 @@
 const { readBody, rejectMethod, sendJson } = require("../../lib/http");
-const { getProject, saveProject } = require("../../lib/vercel-project-store");
+const { getProject, saveProject } = require("../../lib/project-store");
 
 module.exports = async function handler(request, response) {
   if (rejectMethod(request, response, ["GET", "PUT"])) {
