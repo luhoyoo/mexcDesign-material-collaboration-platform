@@ -15,6 +15,7 @@
 - CSV 导入后会按表头自动识别语言数量，并同步更新左侧语言图层
 - 新建项目支持选择语言来源：CSV 自动识别，或手动选择多语言
 - 标准 CSV 多语言文案模板位于 `data/multilingual-copy-template.csv`
+- CSV 导入会自动识别 UTF-8 / UTF-16 / GB18030 / Big5 编码，以及逗号、Tab、分号分隔符
 - 模板选择、模板版本绑定和模板内尺寸规范
 - 模板管理能力暂时隐藏，模板与尺寸规范由 Codex Figma MCP 同步维护
 - 操作页按当前语言展示全部选中尺寸，不允许用户修改模板布局
@@ -29,6 +30,7 @@
 - Poster 与 INS Poster 的标签保持右对齐，文本框会随文案长度向左自动扩展
 - 主副标题采用相同的动态跟随逻辑，每个尺寸的间距值由 Figma MCP 模板规范决定
 - Poster / INS Poster / Announcement / Web 小 banner 的主副标题间距固定，副标题按主标题单行或双行自动上移/下移
+- 多语言渲染按语言自动切换 Inter / Noto Sans 系列开源字体，导出前会等待字体加载
 - Konva.js 画布渲染与 PNG 导出
 
 ## 本地启动

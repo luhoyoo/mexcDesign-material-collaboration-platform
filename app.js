@@ -6,6 +6,27 @@ const TITLE_SUBTITLE_GAP_BY_PRESET = {
   "announcement-banner-800x450": 10,
   "web-small-banner-288x144": 4,
 };
+const FONT_STACKS = {
+  default: '"Inter", "Noto Sans", Arial, sans-serif',
+  cjkSc: '"Noto Sans SC", "Inter", "Noto Sans", sans-serif',
+  cjkTc: '"Noto Sans TC", "Inter", "Noto Sans", sans-serif',
+  japanese: '"Noto Sans JP", "Inter", "Noto Sans", sans-serif',
+  korean: '"Noto Sans KR", "Inter", "Noto Sans", sans-serif',
+  arabic: '"Noto Sans Arabic", "Inter", "Noto Sans", sans-serif',
+  hebrew: '"Noto Sans Hebrew", "Inter", "Noto Sans", sans-serif',
+  thai: '"Noto Sans Thai", "Inter", "Noto Sans", sans-serif',
+};
+const FONT_STACK_BY_LANGUAGE = {
+  "zh-Hans": FONT_STACKS.cjkSc,
+  "zh-Hant": FONT_STACKS.cjkTc,
+  "zh-MY": FONT_STACKS.cjkSc,
+  ja: FONT_STACKS.japanese,
+  ko: FONT_STACKS.korean,
+  ar: FONT_STACKS.arabic,
+  fa: FONT_STACKS.arabic,
+  he: FONT_STACKS.hebrew,
+  th: FONT_STACKS.thai,
+};
 const RESOURCE_PRESETS = {
   "search-banner-690x160": {
     label: "搜索页banner · 690 × 160",
@@ -373,23 +394,17 @@ const backgroundUploadStatus = document.querySelector("#backgroundUploadStatus")
 const boxImageUpload = document.querySelector("#boxImageUpload");
 const rtlBoxImageUpload = document.querySelector("#rtlBoxImageUpload");
 const foregroundUploadStatus = document.querySelector("#foregroundUploadStatus");
-const titleInput = document.querySelector("#titleInput");
-const tagInput = document.querySelector("#tagInput");
-const sourceCopyPresetName = document.querySelector("#sourceCopyPresetName");
 const activeTemplateInput = document.querySelector("#activeTemplateInput");
 const titleFont = document.querySelector("#titleFont");
 const titleSize = document.querySelector("#titleSize");
 const titleColor = document.querySelector("#titleColor");
-const subtitleInput = document.querySelector("#subtitleInput");
 const subtitleFont = document.querySelector("#subtitleFont");
 const subtitleSize = document.querySelector("#subtitleSize");
 const subtitleColor = document.querySelector("#subtitleColor");
-const resetLayout = document.querySelector("#resetLayout");
 const exportImage = document.querySelector("#exportImage");
 const languageSelect = document.querySelector("#languageSelect");
 const generateLanguages = document.querySelector("#generateLanguages");
 const exportAll = document.querySelector("#exportAll");
-const exportAllFooter = document.querySelector("#exportAllFooter");
 const translationStatus = document.querySelector("#translationStatus");
 const languageList = document.querySelector("#languageList");
 const languageCount = document.querySelector("#languageCount");
@@ -401,6 +416,7 @@ const activeTagInput = document.querySelector("#activeTagInput");
 const activeReviewStatus = document.querySelector("#activeReviewStatus");
 const activeNoteInput = document.querySelector("#activeNoteInput");
 const csvUpload = document.querySelector("#csvUpload");
+const importCsvButton = document.querySelector("#importCsvButton");
 const translationProvider = document.querySelector("#translationProvider");
 const apiConfigPanel = document.querySelector(".api-config");
 const apiKeyInput = document.querySelector("#apiKeyInput");
@@ -471,6 +487,11 @@ const filenamePatternInput = document.querySelector("#filenamePatternInput");
 const templateManagerStatus = document.querySelector("#templateManagerStatus");
 const measureCanvas = document.createElement("canvas");
 const measureContext = measureCanvas.getContext("2d");
+const DEFAULT_SOURCE_COPY = {
+  title: "Equip the\n$100,000 Exo Suit",
+  subtitle: "Epic Gear Arena S3",
+  tag: "0 Fees",
+};
 let posterStage = null;
 let posterLayer = null;
 let wizardSelectedLanguageCodes = [];
@@ -511,9 +532,9 @@ const state = {
   rtlContentImage: null,
   rtlContentImageData: "",
   activeLanguage: "en",
-  sourceTitle: titleInput.value,
-  sourceSubtitle: subtitleInput.value,
-  sourceTag: tagInput.value,
+  sourceTitle: DEFAULT_SOURCE_COPY.title,
+  sourceSubtitle: DEFAULT_SOURCE_COPY.subtitle,
+  sourceTag: DEFAULT_SOURCE_COPY.tag,
   variants: {},
   previewImages: {},
   apiConfig: loadApiConfig(),
@@ -833,6 +854,10 @@ function getActivePresetLabel() {
   return getResourcePreset().label || state.resourcePreset;
 }
 
+function getFontFamilyForLanguage(languageCode = state.activeLanguage) {
+  return FONT_STACK_BY_LANGUAGE[languageCode] || FONT_STACKS.default;
+}
+
 function syncEnglishVariant() {
   state.variants.en = {
     ...(state.variants.en || {}),
@@ -1028,12 +1053,12 @@ function getResolvedSubtitleLayout(title = getVariantForRender()?.title || "") {
   };
 }
 
-function getTitleLineCount(title) {
-  return getWrappedLines(title, getTitleOptions(), getTitleLayout().width).length;
+function getTitleLineCount(title, languageCode = state.activeLanguage) {
+  return getWrappedLines(title, getTitleOptions(languageCode), getTitleLayout().width).length;
 }
 
-function enforceTwoLineTitle(title) {
-  const lines = getWrappedLines(title, getTitleOptions(), getTitleLayout().width);
+function enforceTwoLineTitle(title, languageCode = state.activeLanguage) {
+  const lines = getWrappedLines(title, getTitleOptions(languageCode), getTitleLayout().width);
 
   if (lines.length <= 2) {
     return title;
@@ -1044,7 +1069,7 @@ function enforceTwoLineTitle(title) {
   const ellipsis = "...";
   while (
     fittedSecondLine.length > 0 &&
-    getWrappedLines(`${lines[0]}\n${fittedSecondLine}${ellipsis}`, getTitleOptions(), getTitleLayout().width)
+    getWrappedLines(`${lines[0]}\n${fittedSecondLine}${ellipsis}`, getTitleOptions(languageCode), getTitleLayout().width)
       .length > 2
   ) {
     fittedSecondLine = fittedSecondLine.slice(0, -1).trimEnd();
@@ -1054,13 +1079,13 @@ function enforceTwoLineTitle(title) {
 }
 
 async function optimizeTitleForTwoLines(variant, language) {
-  if (getTitleLineCount(variant.title) <= 2) {
+  if (getTitleLineCount(variant.title, language.code) <= 2) {
     return variant;
   }
 
   try {
     const compactVariant = await translateVariant(language, "compact");
-    if (getTitleLineCount(compactVariant.title) <= 2) {
+    if (getTitleLineCount(compactVariant.title, language.code) <= 2) {
       return {
         ...compactVariant,
         status: "已优化",
@@ -1072,7 +1097,7 @@ async function optimizeTitleForTwoLines(variant, language) {
 
   return {
     ...variant,
-    title: enforceTwoLineTitle(variant.title),
+    title: enforceTwoLineTitle(variant.title, language.code),
     status: "已优化",
   };
 }
@@ -1082,7 +1107,7 @@ function applyFixedTextLayout(title = getVariantForRender()?.title || "") {
   setBoxLayoutPx(subtitleBox, getResolvedSubtitleLayout(title));
 }
 
-function getTitleOptions() {
+function getTitleOptions(languageCode = state.activeLanguage) {
   const titleRule = getSizeSpecTextRule("title", {
     fontFamily: "Inter",
     fontSize: 90,
@@ -1091,14 +1116,14 @@ function getTitleOptions() {
   });
   return {
     color: titleRule.color || "#0055ff",
-    font: titleRule.fontFamily,
+    font: getFontFamilyForLanguage(languageCode) || titleRule.fontFamily,
     lineHeight: titleRule.lineHeight,
     size: titleRule.fontSize,
     weight: titleRule.fontWeight,
   };
 }
 
-function getSubtitleOptions() {
+function getSubtitleOptions(languageCode = state.activeLanguage) {
   const subtitleRule = getSizeSpecTextRule("subtitle", {
     fontFamily: "Inter",
     fontSize: 40,
@@ -1107,7 +1132,7 @@ function getSubtitleOptions() {
   });
   return {
     color: subtitleRule.color || "#000000",
-    font: subtitleRule.fontFamily,
+    font: getFontFamilyForLanguage(languageCode) || subtitleRule.fontFamily,
     lineHeight: subtitleRule.lineHeight,
     size: subtitleRule.fontSize,
     weight: subtitleRule.fontWeight,
@@ -1160,7 +1185,7 @@ function addTextLayer(box, text, options) {
   posterLayer.add(group);
 }
 
-function addTagLayer(text, direction) {
+function addTagLayer(text, direction, languageCode = state.activeLanguage) {
   const preset = getResourcePreset();
   const tagBox = preset.tagBox;
   const rule = preset.tagRule;
@@ -1169,7 +1194,7 @@ function addTagLayer(text, direction) {
     return;
   }
 
-  const fontFamily = rule.fontFamily || "Inter";
+  const fontFamily = getFontFamilyForLanguage(languageCode) || rule.fontFamily || "Inter";
   const fontSize = rule.fontSize || 16;
   const fontWeight = rule.fontWeight || 500;
   const lineHeight = rule.lineHeight || 1;
@@ -1274,9 +1299,9 @@ function render() {
   }
 
   addImageBoxLayer();
-  addTagLayer(variant.tag, language.dir);
-  addTextLayer(titleBox, variant.title, { ...getTitleOptions(), direction: language.dir });
-  addTextLayer(subtitleBox, variant.subtitle, { ...getSubtitleOptions(), direction: language.dir });
+  addTagLayer(variant.tag, language.dir, language.code);
+  addTextLayer(titleBox, variant.title, { ...getTitleOptions(language.code), direction: language.dir });
+  addTextLayer(subtitleBox, variant.subtitle, { ...getSubtitleOptions(language.code), direction: language.dir });
   posterLayer.batchDraw();
   if (!isRenderingResourcePreviews) {
     queueResourceArtboardsRefresh();
@@ -1357,7 +1382,6 @@ function selectResourcePresetForEditing(presetId) {
   }
   state.resourcePreset = presetId;
   applyResourcePresetToStage();
-  renderSourceCopyEditor();
   renderActiveLanguageEditor();
   render();
 }
@@ -1833,18 +1857,7 @@ function renderLanguageList() {
       </button>
     `;
   }).join("");
-  renderSourceCopyEditor();
   renderActiveLanguageEditor();
-}
-
-function renderSourceCopyEditor() {
-  const englishVariant = getVariantForRender("en");
-  if (sourceCopyPresetName) {
-    sourceCopyPresetName.textContent = getActivePresetLabel();
-  }
-  titleInput.value = englishVariant.title || "";
-  subtitleInput.value = englishVariant.subtitle || "";
-  tagInput.value = englishVariant.tag || "";
 }
 
 function renderActiveLanguageEditor() {
@@ -1880,12 +1893,40 @@ function clearPreviewImages() {
   renderPosterPreviewGrid();
 }
 
-function parseCsv(text) {
+function countUnquotedDelimiter(text, delimiter) {
+  let count = 0;
+  let inQuotes = false;
+  const firstLineEnd = text.search(/\r|\n/);
+  const sample = firstLineEnd >= 0 ? text.slice(0, firstLineEnd) : text;
+
+  for (let index = 0; index < sample.length; index += 1) {
+    const char = sample[index];
+    const nextChar = sample[index + 1];
+    if (char === '"' && inQuotes && nextChar === '"') {
+      index += 1;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === delimiter && !inQuotes) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
+function detectDelimiter(text) {
+  const candidates = [",", "\t", ";"];
+  return candidates
+    .map((delimiter) => ({ delimiter, count: countUnquotedDelimiter(text, delimiter) }))
+    .sort((a, b) => b.count - a.count)[0]?.delimiter || ",";
+}
+
+function parseCsv(text, delimiter = detectDelimiter(text)) {
   const rows = [];
   let row = [];
   let cell = "";
   let inQuotes = false;
-  const normalizedText = text.replace(/^\uFEFF/, "");
+  const normalizedText = text.replace(/^\uFEFF/, "").replace(/\u0000/g, "");
 
   for (let index = 0; index < normalizedText.length; index += 1) {
     const char = normalizedText[index];
@@ -1896,7 +1937,7 @@ function parseCsv(text) {
       index += 1;
     } else if (char === '"') {
       inQuotes = !inQuotes;
-    } else if (char === "," && !inQuotes) {
+    } else if (char === delimiter && !inQuotes) {
       row.push(cell);
       cell = "";
     } else if ((char === "\n" || char === "\r") && !inQuotes) {
@@ -1922,8 +1963,61 @@ function parseCsv(text) {
   return rows;
 }
 
+function replacementScore(text) {
+  const replacements = (text.match(/\uFFFD/g) || []).length;
+  const nulls = (text.match(/\u0000/g) || []).length;
+  return replacements * 10 + nulls;
+}
+
+function decodeCsvBuffer(buffer) {
+  const bytes = new Uint8Array(buffer);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return new TextDecoder("utf-16le").decode(buffer);
+  }
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+    return new TextDecoder("utf-16be").decode(buffer);
+  }
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return new TextDecoder("utf-8").decode(buffer);
+  }
+
+  const encodings = ["utf-8", "utf-16le", "gb18030", "big5"];
+  const decoded = encodings.map((encoding) => {
+    try {
+      const text = new TextDecoder(encoding).decode(buffer);
+      return {
+        encoding,
+        text,
+        score: replacementScore(text),
+        delimiterCount: Math.max(
+          countUnquotedDelimiter(text, ","),
+          countUnquotedDelimiter(text, "\t"),
+          countUnquotedDelimiter(text, ";"),
+        ),
+      };
+    } catch {
+      return null;
+    }
+  }).filter(Boolean);
+
+  decoded.sort((a, b) => (
+    a.score - b.score
+    || b.delimiterCount - a.delimiterCount
+    || encodings.indexOf(a.encoding) - encodings.indexOf(b.encoding)
+  ));
+  return decoded[0]?.text || "";
+}
+
 function normalizeCell(value) {
   return String(value || "").trim();
+}
+
+function normalizeCsvLabel(value) {
+  return normalizeCell(value)
+    .toLowerCase()
+    .replaceAll(" ", "")
+    .replaceAll("_", "")
+    .replaceAll("-", "");
 }
 
 function getCsvLanguage(csvCode) {
@@ -1940,31 +2034,82 @@ function getCsvLanguage(csvCode) {
   });
 }
 
-function applyCsvRows(rows) {
-  const headerRow = rows[0] || [];
-  const titleRow = rows.find((row) => normalizeCell(row[0]).toLowerCase() === "header");
-  const subtitleRow = rows.find((row) => normalizeCell(row[0]).toLowerCase() === "subhead");
-  const tagRow = rows.find((row) => normalizeCell(row[0]).toLowerCase() === "tag");
+function getCsvFieldKey(value) {
+  const label = normalizeCsvLabel(value);
+  if (["header", "title", "headline", "maintitle", "主标题", "标题", "主文案"].includes(label)) {
+    return "title";
+  }
+  if (["subhead", "subtitle", "subheadline", "副标题", "副文案"].includes(label)) {
+    return "subtitle";
+  }
+  if (["tag", "label", "badge", "pill", "标签", "标签文案", "角标"].includes(label)) {
+    return "tag";
+  }
+  return "";
+}
 
-  if (!titleRow || !subtitleRow) {
-    throw new Error("CSV 需要包含 Header 和 Subhead 两行");
+function findCsvHeaderRow(rows) {
+  let bestMatch = {
+    index: -1,
+    count: 0,
+    languagesByColumn: new Map(),
+  };
+
+  rows.forEach((row, rowIndex) => {
+    const languagesByColumn = new Map();
+    row.forEach((cell, columnIndex) => {
+      const language = getCsvLanguage(normalizeCell(cell));
+      if (language) {
+        languagesByColumn.set(columnIndex, language);
+      }
+    });
+
+    if (languagesByColumn.size > bestMatch.count) {
+      bestMatch = {
+        index: rowIndex,
+        count: languagesByColumn.size,
+        languagesByColumn,
+      };
+    }
+  });
+
+  return bestMatch.count ? bestMatch : null;
+}
+
+function applyCsvRows(rows, meta = {}) {
+  const headerMatch = findCsvHeaderRow(rows);
+  if (!headerMatch) {
+    throw new Error("CSV 没有识别到语言表头，请检查第一行是否包含 en-US、zh-CN 等语言代码。");
+  }
+
+  const fieldRows = {
+    title: null,
+    subtitle: null,
+    tag: null,
+  };
+  rows.forEach((row, rowIndex) => {
+    if (rowIndex === headerMatch.index) {
+      return;
+    }
+    const key = getCsvFieldKey(row[0]);
+    if (key && !fieldRows[key]) {
+      fieldRows[key] = row;
+    }
+  });
+
+  if (!fieldRows.title || !fieldRows.subtitle) {
+    throw new Error("CSV 需要包含主标题和副标题两行，行名可用 Header/Subhead 或 主标题/副标题。");
   }
 
   let importedCount = 0;
   const importedLanguageCodes = [];
 
-  headerRow.forEach((rawCode, columnIndex) => {
-    const csvCode = normalizeCell(rawCode);
-    if (!csvCode) {
-      return;
-    }
+  headerMatch.languagesByColumn.forEach((language, columnIndex) => {
+    const title = normalizeCell(fieldRows.title[columnIndex]);
+    const subtitle = normalizeCell(fieldRows.subtitle[columnIndex]);
+    const tag = normalizeCell(fieldRows.tag?.[columnIndex]);
 
-    const language = getCsvLanguage(csvCode);
-    const title = normalizeCell(titleRow[columnIndex]);
-    const subtitle = normalizeCell(subtitleRow[columnIndex]);
-    const tag = normalizeCell(tagRow?.[columnIndex]);
-
-    if (!language || (!title && !subtitle && !tag)) {
+    if (!title && !subtitle && !tag) {
       return;
     }
 
@@ -1999,9 +2144,6 @@ function applyCsvRows(rows) {
     state.sourceTitle = englishVariant.title;
     state.sourceSubtitle = englishVariant.subtitle;
     state.sourceTag = englishVariant.tag || state.sourceTag;
-    titleInput.value = state.sourceTitle;
-    subtitleInput.value = state.sourceSubtitle;
-    tagInput.value = state.sourceTag;
     syncEnglishVariant();
     state.variants.en.status = "CSV导入";
   }
@@ -2010,12 +2152,14 @@ function applyCsvRows(rows) {
   renderLanguageList();
   renderPosterPreviewGrid();
   render();
-  translationStatus.textContent = `已从 CSV 识别并导入 ${importedLanguageCodes.length} 个语言版本。`;
+  const delimiterLabel = meta.delimiter === "\t" ? "Tab" : meta.delimiter || ",";
+  translationStatus.textContent = `已从 CSV 识别并导入 ${importedLanguageCodes.length} 个语言版本（分隔符：${delimiterLabel}）。`;
 }
 
 async function importCsvFile(file) {
-  const text = await file.text();
-  applyCsvRows(parseCsv(text));
+  const text = decodeCsvBuffer(await file.arrayBuffer());
+  const delimiter = detectDelimiter(text);
+  applyCsvRows(parseCsv(text, delimiter), { delimiter });
 }
 
 function escapeHtml(value) {
@@ -2144,7 +2288,8 @@ async function generateLanguageVariants() {
   render();
 }
 
-function downloadCurrentImage(filename) {
+async function downloadCurrentImage(filename) {
+  await ensureFontsReady();
   const link = document.createElement("a");
   link.download = filename;
   link.href = getPosterDataUrl();
@@ -2166,10 +2311,24 @@ function wait(ms) {
   });
 }
 
+async function ensureFontsReady() {
+  if (!document.fonts?.ready) {
+    return;
+  }
+  try {
+    await Promise.race([
+      document.fonts.ready,
+      wait(2000),
+    ]);
+  } catch {
+    // Browser fallback fonts will be used if remote font loading is unavailable.
+  }
+}
+
 async function exportAllLanguages() {
+  await ensureFontsReady();
   const previousLanguage = state.activeLanguage;
   exportAll.disabled = true;
-  exportAllFooter.disabled = true;
   translationStatus.textContent = "正在生成 ZIP 压缩包...";
   const files = [];
 
@@ -2205,7 +2364,6 @@ async function exportAllLanguages() {
   renderPosterPreviewGrid();
   render();
   exportAll.disabled = false;
-  exportAllFooter.disabled = false;
   translationStatus.textContent = "ZIP 压缩包已生成。";
 }
 
@@ -2446,9 +2604,9 @@ async function applyProjectData(project) {
   state.rtlBaseImage = await loadImageFromDataUrl(state.rtlBaseImageData);
   state.contentImage = await loadImageFromDataUrl(state.contentImageData);
   state.rtlContentImage = await loadImageFromDataUrl(state.rtlContentImageData);
-  state.sourceTitle = data.sourceTitle || titleInput.value;
-  state.sourceSubtitle = data.sourceSubtitle || subtitleInput.value;
-  state.sourceTag = data.sourceTag || tagInput.value;
+  state.sourceTitle = data.sourceTitle || DEFAULT_SOURCE_COPY.title;
+  state.sourceSubtitle = data.sourceSubtitle || DEFAULT_SOURCE_COPY.subtitle;
+  state.sourceTag = data.sourceTag || DEFAULT_SOURCE_COPY.tag;
   state.variants = data.variants || {};
   state.templateId = normalizeTemplateId(data.templateId || DEFAULT_TEMPLATE_ID);
   applyTemplateMetadata();
@@ -2474,9 +2632,6 @@ async function applyProjectData(project) {
   state.subtitleSize = Number(style.subtitleSize || preset.defaultStyle.subtitleSize);
   state.subtitleColor = style.subtitleColor || state.subtitleColor;
 
-  titleInput.value = state.sourceTitle;
-  subtitleInput.value = state.sourceSubtitle;
-  tagInput.value = state.sourceTag;
   titleFont.value = state.titleFont;
   titleSize.value = state.titleSize;
   titleColor.value = state.titleColor;
@@ -2614,9 +2769,9 @@ function createNewProject(config = {}) {
   state.contentImageData = "";
   state.rtlContentImage = null;
   state.rtlContentImageData = "";
-  state.sourceTitle = "Equip the\n$100,000 Exo Suit";
-  state.sourceSubtitle = "Epic Gear Arena S3";
-  state.sourceTag = "0 Fees";
+  state.sourceTitle = DEFAULT_SOURCE_COPY.title;
+  state.sourceSubtitle = DEFAULT_SOURCE_COPY.subtitle;
+  state.sourceTag = DEFAULT_SOURCE_COPY.tag;
   state.variants = {};
   state.activeLanguage = LANGUAGES.some((language) => language.code === "en")
     ? "en"
@@ -2624,9 +2779,6 @@ function createNewProject(config = {}) {
   const preset = getResourcePreset();
   state.titleSize = preset.defaultStyle.titleSize;
   state.subtitleSize = preset.defaultStyle.subtitleSize;
-  titleInput.value = state.sourceTitle;
-  subtitleInput.value = state.sourceSubtitle;
-  tagInput.value = state.sourceTag;
   titleSize.value = state.titleSize;
   subtitleSize.value = state.subtitleSize;
   wizardSelectedTemplateId = state.templateId;
@@ -2688,6 +2840,7 @@ async function toggleProgressConfirmation() {
 }
 
 async function refreshPreviewImagesForAllLanguages() {
+  await ensureFontsReady();
   const previousLanguage = state.activeLanguage;
   refreshPreviews.disabled = true;
   translationStatus.textContent = "正在生成多语言海报预览...";
@@ -2851,8 +3004,18 @@ csvUpload.addEventListener("change", async (event) => {
   }
 });
 
-titleInput.addEventListener("input", (event) => {
-  updateSourceCopyField("title", event.target.value);
+importCsvButton.addEventListener("click", async () => {
+  const [file] = csvUpload.files || [];
+  if (!file) {
+    translationStatus.textContent = "请先选择 CSV 多语言文案表。";
+    return;
+  }
+
+  try {
+    await importCsvFile(file);
+  } catch (error) {
+    translationStatus.textContent = error.message;
+  }
 });
 
 titleFont.addEventListener("input", (event) => {
@@ -2873,14 +3036,6 @@ titleColor.addEventListener("input", (event) => {
   render();
 });
 
-subtitleInput.addEventListener("input", (event) => {
-  updateSourceCopyField("subtitle", event.target.value);
-});
-
-tagInput.addEventListener("input", (event) => {
-  updateSourceCopyField("tag", event.target.value);
-});
-
 subtitleFont.addEventListener("input", (event) => {
   state.subtitleFont = event.target.value;
   clearPreviewImages();
@@ -2899,13 +3054,8 @@ subtitleColor.addEventListener("input", (event) => {
   render();
 });
 
-resetLayout.addEventListener("click", () => {
-  resetBoxes();
-  clearPreviewImages();
-});
-
-exportImage.addEventListener("click", () => {
-  downloadCurrentImage(filenameForLanguage(getLanguage(state.activeLanguage)));
+exportImage.addEventListener("click", async () => {
+  await downloadCurrentImage(filenameForLanguage(getLanguage(state.activeLanguage)));
 });
 
 projectNameInput.addEventListener("input", (event) => {
@@ -2930,7 +3080,6 @@ languageSelect.addEventListener("input", (event) => {
 
 generateLanguages.addEventListener("click", generateLanguageVariants);
 exportAll.addEventListener("click", exportAllLanguages);
-exportAllFooter.addEventListener("click", exportAllLanguages);
 saveApiConfig.addEventListener("click", saveCurrentApiConfig);
 translationProvider.addEventListener("input", saveCurrentApiConfig);
 refreshPreviews.addEventListener("click", refreshPreviewImagesForAllLanguages);
@@ -2967,24 +3116,23 @@ function updateActiveVariantField(field, value) {
   if (field === "title" || field === "subtitle" || field === "tag") {
     const sizeCopy = ensureSizeCopyForLanguage(code);
     sizeCopy[field] = value;
+    if (code === "en") {
+      if (field === "title") {
+        state.sourceTitle = value;
+      }
+      if (field === "subtitle") {
+        state.sourceSubtitle = value;
+      }
+      if (field === "tag") {
+        state.sourceTag = value;
+      }
+    }
   } else {
     variant[field] = value;
   }
   variant.status = code === "en" ? "源文案" : "已编辑";
 
   delete state.previewImages[code];
-  renderLanguageList();
-  renderPosterPreviewGrid();
-  render();
-}
-
-function updateSourceCopyField(field, value) {
-  const sizeCopy = ensureSizeCopyForLanguage("en");
-  sizeCopy[field] = value;
-  state.variants.en.status = "源文案";
-  if (state.activeLanguage === "en") {
-    delete state.previewImages.en;
-  }
   renderLanguageList();
   renderPosterPreviewGrid();
   render();
@@ -3154,6 +3302,7 @@ window.addEventListener("resize", fitCanvasView);
 init();
 
 async function init() {
+  await ensureFontsReady();
   hydrateTemplateLibrary();
   applyTemplateMetadata();
   syncResourcePresetScope();
@@ -3170,6 +3319,10 @@ async function init() {
   renderLanguageList();
   renderPosterPreviewGrid();
   render();
+  document.fonts?.ready?.then(() => {
+    clearPreviewImages();
+    render();
+  }).catch(() => {});
   window.requestAnimationFrame(fitCanvasView);
   await loadProjectList();
 

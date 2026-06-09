@@ -28,29 +28,7 @@
             <label for="csvUpload">CSV 多语言文案表</label>
             <input id="csvUpload" type="file" accept=".csv,text/csv" />
           </div>
-        </section>
-
-        <section class="copy-source-panel" aria-label="当前画板英文文案">
-          <div class="section-head">
-            <div>
-              <span class="eyebrow">Source Copy</span>
-              <h2>当前画板文案</h2>
-            </div>
-            <span id="sourceCopyPresetName" class="panel-pill">Poster · 1200 × 1200</span>
-          </div>
-          <div class="control-group">
-            <label for="titleInput">主标题</label>
-            <textarea id="titleInput" rows="3" placeholder="Equip the&#10;$100,000 Exo Suit">Equip the
-$100,000 Exo Suit</textarea>
-          </div>
-          <div class="control-group">
-            <label for="subtitleInput">副标题</label>
-            <input id="subtitleInput" type="text" value="Epic Gear Arena S3" placeholder="Epic Gear Arena S3" />
-          </div>
-          <div class="control-group">
-            <label for="tagInput">标签文案</label>
-            <input id="tagInput" type="text" value="0 Fees" placeholder="0 Fees" />
-          </div>
+          <button id="importCsvButton" type="button">识别 CSV</button>
         </section>
 
         <section class="language-tools" aria-label="翻译工具">
@@ -141,7 +119,10 @@ $100,000 Exo Suit</textarea>
             <span class="eyebrow">Canvas</span>
             <h2 id="canvasLanguageName">English</h2>
           </div>
-          <button id="exportImage" type="button" class="primary">导出当前 PNG</button>
+          <div class="canvas-toolbar-actions">
+            <button id="exportImage" type="button" class="primary">导出当前 PNG</button>
+            <button id="exportAll" type="button" class="primary">打包下载</button>
+          </div>
         </div>
         <div class="canvas-zoom-controls" aria-label="画布缩放控制">
           <button id="zoomOut" type="button" aria-label="缩小">−</button>
@@ -188,14 +169,22 @@ $100,000 Exo Suit</textarea>
           <p id="projectStatus" class="status-text">当前项目尚未保存。</p>
         </section>
 
-        <div class="control-group">
-          <label for="projectNameInput">项目名称</label>
-          <input id="projectNameInput" type="text" value="MEXC 海报项目" />
-        </div>
-        <div class="control-group">
-          <label for="activeTemplateInput">当前模板</label>
-          <input id="activeTemplateInput" type="text" value="Figma MCP 测试模板" readonly />
-        </div>
+        <section class="project-meta-panel" aria-label="项目基础信息">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow">Project Info</span>
+              <h2>项目信息</h2>
+            </div>
+          </div>
+          <div class="control-group">
+            <label for="projectNameInput">项目名称</label>
+            <input id="projectNameInput" type="text" value="MEXC 海报项目" />
+          </div>
+          <div class="control-group">
+            <label for="activeTemplateInput">当前模板</label>
+            <input id="activeTemplateInput" type="text" value="Figma MCP 测试模板" readonly />
+          </div>
+        </section>
 
         <section class="asset-upload-panel">
           <div class="section-head">
@@ -206,11 +195,15 @@ $100,000 Exo Suit</textarea>
           </div>
           <div class="control-group">
             <label for="baseUpload">上传 LTR 底图</label>
-            <input id="baseUpload" type="file" accept="image/*" />
+            <div class="file-upload-control">
+              <input id="baseUpload" type="file" accept="image/*" />
+            </div>
           </div>
           <div class="control-group">
             <label for="rtlBaseUpload">上传 RTL 底图</label>
-            <input id="rtlBaseUpload" type="file" accept="image/*" />
+            <div class="file-upload-control">
+              <input id="rtlBaseUpload" type="file" accept="image/*" />
+            </div>
           </div>
           <p id="backgroundUploadStatus" class="status-text">仅用于 Poster 和 INS Poster 尺寸。</p>
         </section>
@@ -224,20 +217,20 @@ $100,000 Exo Suit</textarea>
           </div>
           <div class="control-group">
             <label for="boxImageUpload">上传 LTR 前景图</label>
-            <input id="boxImageUpload" type="file" accept="image/*" />
+            <div class="file-upload-control">
+              <input id="boxImageUpload" type="file" accept="image/*" />
+            </div>
           </div>
           <div class="control-group">
             <label for="rtlBoxImageUpload">上传 RTL 前景图</label>
-            <input id="rtlBoxImageUpload" type="file" accept="image/*" />
+            <div class="file-upload-control">
+              <input id="rtlBoxImageUpload" type="file" accept="image/*" />
+            </div>
           </div>
           <p id="foregroundUploadStatus" class="status-text">用于除 Poster、INS Poster 外的其他尺寸，素材比例必须为 1:1。</p>
         </section>
 
-        <button id="resetLayout" type="button">刷新模板布局</button>
-        <button id="exportAllFooter" type="button" class="primary">打包下载</button>
-
         <div class="hidden-template-controls" hidden>
-          <button id="exportAll" type="button">打包下载</button>
           <input id="titleColor" type="color" value="#0055ff" />
           <input id="subtitleColor" type="color" value="#000000" />
           <select id="titleFont"><option value="Inter, Noto Sans, Arial, PingFang SC, Microsoft YaHei, sans-serif" selected>Inter</option></select>

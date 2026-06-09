@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans:wght@400;500;600;700;800;900&family=Noto+Sans+Arabic:wght@400;500;600;700;800;900&family=Noto+Sans+Hebrew:wght@400;500;600;700;800;900&family=Noto+Sans+JP:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;600;700;800;900&family=Noto+Sans+TC:wght@400;500;600;700;800;900&family=Noto+Sans+Thai:wght@400;500;600;700;800;900&display=swap");
+
 :root {
   color-scheme: dark;
   font-family:
@@ -40,7 +42,7 @@ select {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 390px minmax(0, 1fr) 310px;
+  grid-template-columns: 390px minmax(0, 1fr) 390px;
   gap: 0;
   height: 100vh;
   min-height: 0;
@@ -64,6 +66,7 @@ select {
 
 .tool-panel {
   border-left: 1px solid var(--line);
+  container: tool-panel / inline-size;
 }
 
 .panel-head.compact h1 {
@@ -120,8 +123,34 @@ textarea {
 }
 
 input[type="file"] {
+  display: block;
+  max-width: 100%;
+  min-height: 42px;
   padding: 9px;
   color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+input[type="file"]::file-selector-button {
+  max-width: 100%;
+  min-height: 30px;
+  margin-right: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 18%);
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.file-upload-control {
+  display: block;
+  min-width: 0;
+}
+
+.file-upload-control input[type="file"] {
+  width: 100%;
 }
 
 input[type="number"] {
@@ -402,7 +431,7 @@ button.primary:hover {
 }
 
 .locale-import-panel,
-.copy-source-panel,
+.project-meta-panel,
 .asset-upload-panel {
   display: grid;
   gap: 12px;
@@ -417,8 +446,46 @@ button.primary:hover {
 }
 
 .asset-upload-panel {
-  min-height: 132px;
+  min-height: 0;
   align-content: start;
+  overflow: visible;
+}
+
+.tool-panel .project-tools,
+.tool-panel .project-meta-panel,
+.tool-panel .asset-upload-panel {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.tool-panel .button-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@container tool-panel (max-width: 360px) {
+  .file-upload-control input[type="file"] {
+    min-height: 86px;
+    padding: 10px;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .file-upload-control input[type="file"]::file-selector-button {
+    display: block;
+    width: 100%;
+    min-height: 42px;
+    margin: 0 0 10px;
+  }
+
+  .asset-upload-panel {
+    gap: 14px;
+  }
+
+  .asset-upload-panel .status-text {
+    margin-top: 2px;
+  }
+
 }
 
 .language-tools .language-list {
@@ -466,6 +533,13 @@ button.primary:hover {
 
 .canvas-toolbar button {
   padding: 0 14px;
+  pointer-events: auto;
+}
+
+.canvas-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   pointer-events: auto;
 }
 
