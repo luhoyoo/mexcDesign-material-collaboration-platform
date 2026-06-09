@@ -9,22 +9,6 @@
   <body>
     <main class="app-shell">
       <aside class="layers-panel" aria-label="语言图层">
-        <section class="project-tools" aria-label="项目协同">
-          <div class="control-group">
-            <label for="projectSelect">项目</label>
-            <select id="projectSelect"></select>
-          </div>
-          <div class="button-row">
-            <button id="newProject" type="button">新建项目</button>
-            <button id="saveProject" type="button" class="primary">保存</button>
-          </div>
-          <div class="button-row">
-            <button id="copyProjectLink" type="button">分享链接</button>
-            <button id="confirmProgress" type="button">确认完成</button>
-          </div>
-          <p id="projectStatus" class="status-text">当前项目尚未保存。</p>
-        </section>
-
         <div class="panel-head compact">
           <h1>语言图层</h1>
           <p>点击语言切换中间画布。</p>
@@ -33,155 +17,49 @@
           <span>Locales</span>
           <strong id="languageCount">22</strong>
         </div>
-        <div id="languageList" class="language-list" aria-label="多语言图层列表"></div>
-        <div class="layers-footer">
-          <button id="refreshPreviews" type="button">刷新预览</button>
-        </div>
-      </aside>
-
-      <section class="canvas-area" aria-label="编辑画布">
-        <div class="canvas-toolbar">
-          <div>
-            <span class="eyebrow">Canvas</span>
-            <h2 id="canvasLanguageName">English</h2>
-          </div>
-          <button id="exportImage" type="button" class="primary">导出当前 PNG</button>
-        </div>
-        <div class="canvas-zoom-controls" aria-label="画布缩放控制">
-          <button id="zoomOut" type="button" aria-label="缩小">−</button>
-          <span id="zoomLabel">100%</span>
-          <button id="zoomIn" type="button" aria-label="放大">+</button>
-          <button id="resetCanvasView" type="button">适合</button>
-        </div>
-        <div id="canvasViewport" class="canvas-viewport" aria-label="无限画布工作区">
-          <div id="canvasWorld" class="canvas-world">
-            <div id="stage" class="stage">
-              <div id="konvaStage" class="konva-stage" aria-label="Konva 海报画布"></div>
-              <div id="imageBox" class="overlay-box image-box" data-box="image" tabindex="0">
-                <span>图片区域</span>
-                <i></i>
-              </div>
-              <div id="titleBox" class="overlay-box text-layer-box title-box" data-box="title" tabindex="0">
-                <span>主标题区域</span>
-              </div>
-              <div id="subtitleBox" class="overlay-box text-layer-box subtitle-box" data-box="subtitle" tabindex="0">
-                <span>副标题区域</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div id="posterPreviewGrid" class="poster-preview-grid" hidden></div>
-      </section>
-
-      <aside class="tool-panel" aria-label="图片生成设置">
-        <div class="panel-head">
-          <h1>属性面板</h1>
-          <p>上传底图和物料，调整文字样式，检查当前语言文案并导出整套文件。</p>
-        </div>
-
-        <div class="control-group">
-          <label for="projectNameInput">项目名称</label>
-          <input id="projectNameInput" type="text" value="MEXC 海报项目" />
-        </div>
-
-        <section class="active-language-editor" aria-label="当前语言文案">
+        <section class="locale-import-panel" aria-label="多语言表格导入">
           <div class="section-head">
             <div>
-              <span class="eyebrow">Selected Layer</span>
-              <h2>当前语言文案</h2>
+              <span class="eyebrow">Locale Import</span>
+              <h2>多语言表格导入</h2>
             </div>
-            <span id="activeLanguageName" class="section-badge">English</span>
           </div>
           <div class="control-group">
-            <label for="activeTitleInput">当前语言主标题</label>
-            <textarea id="activeTitleInput" rows="3"></textarea>
-          </div>
-          <div class="control-group">
-            <label for="activeSubtitleInput">当前语言副标题</label>
-            <input id="activeSubtitleInput" type="text" />
-          </div>
-          <div class="language-review-row">
-            <div class="control-group">
-              <label for="activeReviewStatus">翻译状态</label>
-              <select id="activeReviewStatus">
-                <option value="待检查">待检查</option>
-                <option value="已确认">已确认</option>
-                <option value="需修改">需修改</option>
-              </select>
-            </div>
-            <div class="control-group">
-              <label for="activeNoteInput">翻译备注</label>
-              <input id="activeNoteInput" type="text" placeholder="给翻译或业务的备注" />
-            </div>
+            <label for="csvUpload">CSV 多语言文案表</label>
+            <input id="csvUpload" type="file" accept=".csv,text/csv" />
           </div>
         </section>
 
-        <div class="control-group">
-          <label for="baseUpload">底图</label>
-          <input id="baseUpload" type="file" accept="image/*" />
-        </div>
-
-        <div class="control-group">
-          <label for="titleInput">主标题</label>
-          <textarea id="titleInput" rows="3" placeholder="Equip the&#10;$100,000 Exo Suit">Equip the
+        <section class="copy-source-panel" aria-label="当前画板英文文案">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow">Source Copy</span>
+              <h2>当前画板文案</h2>
+            </div>
+            <span id="sourceCopyPresetName" class="panel-pill">Poster · 1200 × 1200</span>
+          </div>
+          <div class="control-group">
+            <label for="titleInput">主标题</label>
+            <textarea id="titleInput" rows="3" placeholder="Equip the&#10;$100,000 Exo Suit">Equip the
 $100,000 Exo Suit</textarea>
-        </div>
+          </div>
+          <div class="control-group">
+            <label for="subtitleInput">副标题</label>
+            <input id="subtitleInput" type="text" value="Epic Gear Arena S3" placeholder="Epic Gear Arena S3" />
+          </div>
+          <div class="control-group">
+            <label for="tagInput">标签文案</label>
+            <input id="tagInput" type="text" value="0 Fees" placeholder="0 Fees" />
+          </div>
+        </section>
 
-        <div class="control-row wide">
-          <div class="control-group">
-            <label for="titleFont">主标题字体</label>
-            <select id="titleFont">
-              <option value="Arial Black, Arial, sans-serif">Arial Black</option>
-              <option value="PingFang SC, Microsoft YaHei, sans-serif">PingFang SC</option>
-              <option value="Inter, Noto Sans, Arial, PingFang SC, Microsoft YaHei, sans-serif" selected>Inter</option>
-              <option value="Helvetica, Arial, PingFang SC, Microsoft YaHei, sans-serif">Helvetica</option>
-              <option value="Georgia, serif">Georgia</option>
-              <option value="Impact, sans-serif">Impact</option>
-            </select>
+        <section class="language-tools" aria-label="翻译工具">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow">Localization</span>
+              <h2>多语言翻译</h2>
+            </div>
           </div>
-          <div class="control-group">
-            <label for="titleSize">字号</label>
-            <input id="titleSize" type="number" min="24" max="180" value="90" />
-          </div>
-          <div class="control-group">
-            <label for="titleColor">颜色</label>
-            <input id="titleColor" type="color" value="#0055ff" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label for="subtitleInput">副标题</label>
-          <input id="subtitleInput" type="text" value="Epic Gear Arena S3" placeholder="Epic Gear Arena S3" />
-        </div>
-
-        <div class="control-row wide">
-          <div class="control-group">
-            <label for="subtitleFont">副标题字体</label>
-            <select id="subtitleFont">
-              <option value="Helvetica, Arial, PingFang SC, Microsoft YaHei, sans-serif">Helvetica</option>
-              <option value="PingFang SC, Microsoft YaHei, sans-serif">PingFang SC</option>
-              <option value="Inter, Noto Sans, Arial, PingFang SC, Microsoft YaHei, sans-serif" selected>Inter</option>
-              <option value="Arial Black, Arial, sans-serif">Arial Black</option>
-              <option value="Georgia, serif">Georgia</option>
-              <option value="Impact, sans-serif">Impact</option>
-            </select>
-          </div>
-          <div class="control-group">
-            <label for="subtitleSize">字号</label>
-            <input id="subtitleSize" type="number" min="16" max="120" value="40" />
-          </div>
-          <div class="control-group">
-            <label for="subtitleColor">颜色</label>
-            <input id="subtitleColor" type="color" value="#000000" />
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label for="boxImageUpload">图片内容</label>
-          <input id="boxImageUpload" type="file" accept="image/*" />
-        </div>
-
-        <div class="language-tools">
           <div class="api-config">
             <div class="control-group">
               <label for="translationProvider">翻译引擎</label>
@@ -206,25 +84,166 @@ $100,000 Exo Suit</textarea>
               <button id="saveApiConfig" type="button">保存</button>
             </div>
           </div>
-
           <div class="control-group">
             <label for="languageSelect">预览语言</label>
             <select id="languageSelect"></select>
           </div>
-          <div class="control-group">
-            <label for="csvUpload">CSV 多语言文案表</label>
-            <input id="csvUpload" type="file" accept=".csv,text/csv" />
-          </div>
-          <div class="button-row">
-            <button id="generateLanguages" type="button">生成多语言</button>
-            <button id="exportAll" type="button">打包下载</button>
-          </div>
+          <div id="languageList" class="language-list" aria-label="多语言图层列表"></div>
+
+          <section class="active-language-editor" aria-label="当前语言文案">
+            <div class="section-head">
+              <div>
+                <span class="eyebrow">Selected Locale</span>
+                <h2>当前语言文案</h2>
+              </div>
+              <span id="activeLanguageName" class="section-badge">English</span>
+            </div>
+            <div class="control-group">
+              <label for="activeTitleInput">当前语言主标题</label>
+              <textarea id="activeTitleInput" rows="3"></textarea>
+            </div>
+            <div class="control-group">
+              <label for="activeSubtitleInput">当前语言副标题</label>
+              <input id="activeSubtitleInput" type="text" />
+            </div>
+            <div class="control-group">
+              <label for="activeTagInput">当前语言标签文案</label>
+              <input id="activeTagInput" type="text" />
+            </div>
+            <div class="language-review-row">
+              <div class="control-group">
+                <label for="activeReviewStatus">翻译状态</label>
+                <select id="activeReviewStatus">
+                  <option value="待检查">待检查</option>
+                  <option value="已确认">已确认</option>
+                  <option value="需修改">需修改</option>
+                </select>
+              </div>
+              <div class="control-group">
+                <label for="activeNoteInput">翻译备注</label>
+                <input id="activeNoteInput" type="text" placeholder="给翻译或业务的备注" />
+              </div>
+            </div>
+          </section>
+
+          <button id="generateLanguages" type="button">生成多语言</button>
           <p id="translationStatus" class="status-text">英文源文案会同步到 English 版本。</p>
+        </section>
+
+        <div class="layers-footer">
+          <button id="refreshPreviews" type="button">刷新预览</button>
+        </div>
+      </aside>
+
+      <section class="canvas-area" aria-label="编辑画布">
+        <div class="canvas-toolbar">
+          <div>
+            <span class="eyebrow">Canvas</span>
+            <h2 id="canvasLanguageName">English</h2>
+          </div>
+          <button id="exportImage" type="button" class="primary">导出当前 PNG</button>
+        </div>
+        <div class="canvas-zoom-controls" aria-label="画布缩放控制">
+          <button id="zoomOut" type="button" aria-label="缩小">−</button>
+          <span id="zoomLabel">100%</span>
+          <button id="zoomIn" type="button" aria-label="放大">+</button>
+          <button id="resetCanvasView" type="button">适合</button>
+        </div>
+        <div id="canvasViewport" class="canvas-viewport" aria-label="无限画布工作区">
+          <div id="canvasWorld" class="canvas-world">
+            <div id="resourceArtboards" class="resource-artboards" aria-label="当前语言全部尺寸预览"></div>
+          </div>
+        </div>
+        <div class="render-engine" aria-hidden="true">
+          <div id="stage" class="stage">
+            <div id="konvaStage" class="konva-stage"></div>
+            <div id="imageBox" class="image-box" data-box="image"></div>
+            <div id="titleBox" class="title-box" data-box="title"></div>
+            <div id="subtitleBox" class="subtitle-box" data-box="subtitle"></div>
+          </div>
+        </div>
+        <div id="posterPreviewGrid" class="poster-preview-grid" hidden></div>
+      </section>
+
+      <aside class="tool-panel" aria-label="图片生成设置">
+        <div class="panel-head">
+          <h1>图片素材</h1>
+          <p>上传当前任务使用的底图和前景图。文字与翻译统一在左侧修改。</p>
         </div>
 
-        <div class="button-row">
-          <button id="resetLayout" type="button">重置布局</button>
-          <button id="exportAllFooter" type="button" class="primary">打包下载</button>
+        <section class="project-tools" aria-label="项目协同">
+          <div class="control-group">
+            <label for="projectSelect">项目</label>
+            <select id="projectSelect"></select>
+          </div>
+          <div class="button-row">
+            <button id="newProject" type="button">新建项目</button>
+            <button id="saveProject" type="button" class="primary">保存</button>
+          </div>
+          <div class="button-row">
+            <button id="copyProjectLink" type="button">分享链接</button>
+            <button id="confirmProgress" type="button">确认完成</button>
+          </div>
+          <button id="openTemplateManager" type="button" hidden>模板管理</button>
+          <p id="projectStatus" class="status-text">当前项目尚未保存。</p>
+        </section>
+
+        <div class="control-group">
+          <label for="projectNameInput">项目名称</label>
+          <input id="projectNameInput" type="text" value="MEXC 海报项目" />
+        </div>
+        <div class="control-group">
+          <label for="activeTemplateInput">当前模板</label>
+          <input id="activeTemplateInput" type="text" value="Figma MCP 测试模板" readonly />
+        </div>
+
+        <section class="asset-upload-panel">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow">Background</span>
+              <h2>底图</h2>
+            </div>
+          </div>
+          <div class="control-group">
+            <label for="baseUpload">上传 LTR 底图</label>
+            <input id="baseUpload" type="file" accept="image/*" />
+          </div>
+          <div class="control-group">
+            <label for="rtlBaseUpload">上传 RTL 底图</label>
+            <input id="rtlBaseUpload" type="file" accept="image/*" />
+          </div>
+          <p id="backgroundUploadStatus" class="status-text">仅用于 Poster 和 INS Poster 尺寸。</p>
+        </section>
+
+        <section class="asset-upload-panel">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow">Foreground</span>
+              <h2>前景图</h2>
+            </div>
+          </div>
+          <div class="control-group">
+            <label for="boxImageUpload">上传 LTR 前景图</label>
+            <input id="boxImageUpload" type="file" accept="image/*" />
+          </div>
+          <div class="control-group">
+            <label for="rtlBoxImageUpload">上传 RTL 前景图</label>
+            <input id="rtlBoxImageUpload" type="file" accept="image/*" />
+          </div>
+          <p id="foregroundUploadStatus" class="status-text">用于除 Poster、INS Poster 外的其他尺寸，素材比例必须为 1:1。</p>
+        </section>
+
+        <button id="resetLayout" type="button">刷新模板布局</button>
+        <button id="exportAllFooter" type="button" class="primary">打包下载</button>
+
+        <div class="hidden-template-controls" hidden>
+          <button id="exportAll" type="button">打包下载</button>
+          <input id="titleColor" type="color" value="#0055ff" />
+          <input id="subtitleColor" type="color" value="#000000" />
+          <select id="titleFont"><option value="Inter, Noto Sans, Arial, PingFang SC, Microsoft YaHei, sans-serif" selected>Inter</option></select>
+          <input id="titleSize" type="number" value="90" />
+          <select id="subtitleFont"><option value="Inter, Noto Sans, Arial, PingFang SC, Microsoft YaHei, sans-serif" selected>Inter</option></select>
+          <input id="subtitleSize" type="number" value="40" />
         </div>
       </aside>
     </main>
@@ -243,20 +262,163 @@ $100,000 Exo Suit</textarea>
           <input id="wizardProjectName" type="text" value="MEXC 海报项目" />
         </div>
         <div class="control-group">
-          <label for="resourcePreset">资源位尺寸</label>
-          <select id="resourcePreset">
-            <option value="square-1200" selected>1:1 海报 · 1200 × 1200</option>
-          </select>
+          <label for="templateSelect">模板</label>
+          <select id="templateSelect"></select>
+        </div>
+        <div class="control-group">
+          <label>资源位尺寸</label>
+          <div id="resourcePreset" class="wizard-resource-list"></div>
         </div>
         <div class="control-group">
           <label>需要生成的语言</label>
-          <div id="wizardLanguageList" class="wizard-language-list"></div>
-        </div>
-        <div class="button-row">
-          <button id="selectAllLanguages" type="button">全选语言</button>
-          <button id="clearLanguages" type="button">只保留英文</button>
+          <div class="segmented-control language-source-toggle" role="radiogroup" aria-label="语言来源">
+            <label>
+              <input id="wizardLanguageModeCsv" type="radio" name="wizardLanguageMode" value="csv" checked />
+              <span>从 CSV 导入并自动识别</span>
+            </label>
+            <label>
+              <input id="wizardLanguageModeManual" type="radio" name="wizardLanguageMode" value="manual" />
+              <span>自己选择多语言</span>
+            </label>
+          </div>
+          <p id="wizardLanguageModeHint" class="status-text">进入操作页面后上传 CSV，系统会按表头自动生成语言图层。</p>
+          <div id="wizardManualLanguages" class="wizard-manual-languages" hidden>
+            <div id="wizardLanguageList" class="wizard-language-list"></div>
+            <div class="button-row">
+              <button id="selectAllLanguages" type="button">全选语言</button>
+              <button id="clearLanguages" type="button">只保留英文</button>
+            </div>
+          </div>
         </div>
         <button id="createProjectFromWizard" type="button" class="primary">进入操作页面</button>
+      </section>
+    </div>
+
+    <div id="templateManager" class="modal-backdrop" hidden>
+      <section class="template-manager" role="dialog" aria-modal="true" aria-labelledby="templateManagerTitle">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Template System</span>
+            <h2 id="templateManagerTitle">模板管理</h2>
+          </div>
+          <button id="closeTemplateManager" type="button" class="icon-button" aria-label="关闭">×</button>
+        </div>
+
+        <div class="template-manager-grid">
+          <aside class="template-manager-sidebar">
+            <div class="control-group">
+              <label for="managedTemplateSelect">模板</label>
+              <select id="managedTemplateSelect"></select>
+            </div>
+            <div class="button-row">
+              <button id="createTemplate" type="button">新增模板</button>
+              <button id="duplicateTemplate" type="button">复制模板</button>
+            </div>
+            <div class="button-row">
+              <button id="saveTemplateConfig" type="button" class="primary">保存模板</button>
+            </div>
+            <div class="control-group">
+              <label>尺寸规范</label>
+              <div id="managedSizeList" class="managed-size-list"></div>
+            </div>
+            <button id="addSizeSpec" type="button">新增尺寸</button>
+          </aside>
+
+          <section class="template-manager-editor">
+            <div class="template-editor-section">
+              <h3>模板信息</h3>
+              <div class="template-form-grid">
+                <div class="control-group">
+                  <label for="templateNameInput">模板名称</label>
+                  <input id="templateNameInput" type="text" />
+                </div>
+                <div class="control-group">
+                  <label for="templateBusinessLineInput">业务线</label>
+                  <select id="templateBusinessLineInput">
+                    <option value="Product Line">Product Line</option>
+                    <option value="Paid Ads Line">Paid Ads Line</option>
+                  </select>
+                </div>
+                <div class="control-group">
+                  <label for="templateVersionInput">版本</label>
+                  <input id="templateVersionInput" type="text" />
+                </div>
+                <div class="control-group">
+                  <label for="templateStatusInput">状态</label>
+                  <select id="templateStatusInput">
+                    <option value="Draft">Draft</option>
+                    <option value="Published">Published</option>
+                    <option value="Disabled">Disabled</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="template-editor-section">
+              <h3>尺寸规范</h3>
+              <div class="template-form-grid">
+                <div class="control-group">
+                  <label for="sizeIdInput">尺寸 ID</label>
+                  <input id="sizeIdInput" type="text" />
+                </div>
+                <div class="control-group">
+                  <label for="sizeLabelInput">名称</label>
+                  <input id="sizeLabelInput" type="text" />
+                </div>
+                <div class="control-group">
+                  <label for="sizeWidthInput">画布宽</label>
+                  <input id="sizeWidthInput" type="number" min="1" />
+                </div>
+                <div class="control-group">
+                  <label for="sizeHeightInput">画布高</label>
+                  <input id="sizeHeightInput" type="number" min="1" />
+                </div>
+              </div>
+
+              <div class="template-editor-block">
+                <h4>主标题区域 <span>单位 px，行距为倍数</span></h4>
+                <div class="template-form-grid compact-grid">
+                  <label class="metric-field" for="titleLeftInput"><span>X 坐标</span><input id="titleLeftInput" type="number" placeholder="left" /></label>
+                  <label class="metric-field" for="titleTopInput"><span>Y 坐标</span><input id="titleTopInput" type="number" placeholder="top" /></label>
+                  <label class="metric-field" for="titleWidthInput"><span>宽度</span><input id="titleWidthInput" type="number" placeholder="width" /></label>
+                  <label class="metric-field" for="titleHeightInput"><span>高度</span><input id="titleHeightInput" type="number" placeholder="height" /></label>
+                  <label class="metric-field" for="titleFontSizeInput"><span>字号</span><input id="titleFontSizeInput" type="number" placeholder="字号" /></label>
+                  <label class="metric-field" for="titleLineHeightInput"><span>行距</span><input id="titleLineHeightInput" type="number" step="0.01" placeholder="行距" /></label>
+                  <label class="metric-field" for="titleTextColorInput"><span>颜色</span><input id="titleTextColorInput" type="color" value="#0055ff" /></label>
+                </div>
+              </div>
+
+              <div class="template-editor-block">
+                <h4>副标题区域 <span>单位 px，行距为倍数；Y 坐标为兜底，实际与主标题固定间距 26px</span></h4>
+                <div class="template-form-grid compact-grid">
+                  <label class="metric-field" for="subtitleLeftInput"><span>X 坐标</span><input id="subtitleLeftInput" type="number" placeholder="left" /></label>
+                  <label class="metric-field" for="subtitleTopInput"><span>Y 坐标</span><input id="subtitleTopInput" type="number" placeholder="top" /></label>
+                  <label class="metric-field" for="subtitleWidthInput"><span>宽度</span><input id="subtitleWidthInput" type="number" placeholder="width" /></label>
+                  <label class="metric-field" for="subtitleHeightInput"><span>高度</span><input id="subtitleHeightInput" type="number" placeholder="height" /></label>
+                  <label class="metric-field" for="subtitleFontSizeInput"><span>字号</span><input id="subtitleFontSizeInput" type="number" placeholder="字号" /></label>
+                  <label class="metric-field" for="subtitleLineHeightInput"><span>行距</span><input id="subtitleLineHeightInput" type="number" step="0.01" placeholder="行距" /></label>
+                  <label class="metric-field" for="subtitleTextColorInput"><span>颜色</span><input id="subtitleTextColorInput" type="color" value="#000000" /></label>
+                </div>
+              </div>
+
+              <div class="template-editor-block">
+                <h4>图片区域 <span>单位 px</span></h4>
+                <div class="template-form-grid compact-grid">
+                  <label class="metric-field" for="imageLeftInput"><span>X 坐标</span><input id="imageLeftInput" type="number" placeholder="left" /></label>
+                  <label class="metric-field" for="imageTopInput"><span>Y 坐标</span><input id="imageTopInput" type="number" placeholder="top" /></label>
+                  <label class="metric-field" for="imageWidthInput"><span>宽度</span><input id="imageWidthInput" type="number" placeholder="width" /></label>
+                  <label class="metric-field" for="imageHeightInput"><span>高度</span><input id="imageHeightInput" type="number" placeholder="height" /></label>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label for="filenamePatternInput">导出命名</label>
+                <input id="filenamePatternInput" type="text" placeholder="{size}-{language}.png" />
+              </div>
+              <p id="templateManagerStatus" class="status-text">模板规范会保存到当前浏览器。</p>
+            </div>
+          </section>
+        </div>
       </section>
     </div>
 
