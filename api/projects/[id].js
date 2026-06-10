@@ -18,7 +18,7 @@ module.exports = async function handler(request, response) {
       return;
     }
 
-    const payload = await readBody(request);
+    const payload = await readBody(request, { limitBytes: 5 * 1024 * 1024 });
     const updatedProject = {
       ...project,
       name: payload.name || project.name,
@@ -28,6 +28,6 @@ module.exports = async function handler(request, response) {
     await saveProject(updatedProject);
     sendJson(response, 200, updatedProject);
   } catch (error) {
-    sendJson(response, 500, { error: error.message });
+    sendJson(response, error.status || 500, { error: error.message });
   }
 };

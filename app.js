@@ -351,6 +351,8 @@ const TEMPLATE_LIBRARY = {
 };
 let LANGUAGES = [...ALL_LANGUAGES];
 const IS_STANDALONE = window.location.protocol === "file:";
+// tr-CT is a business-defined Turkish copy variant. Translation engines should
+// still receive standard Turkish while exports keep the business locale code.
 const MYMEMORY_LANGUAGE_CODES = {
   ar: "ar",
   de: "de",
@@ -374,6 +376,7 @@ const MYMEMORY_LANGUAGE_CODES = {
   sv: "sv",
   th: "th",
   tr: "tr",
+  "tr-CT": "tr",
   uk: "uk",
   vi: "vi",
   "zh-Hans": "zh-CN",
@@ -602,7 +605,12 @@ function saveTemplateLibraryToStorage() {
 }
 
 function hydrateTemplateLibrary() {
-  localStorage.removeItem("posterTemplateLibrary");
+  const savedTemplates = readSavedTemplateLibrary();
+  Object.entries(savedTemplates).forEach(([id, template]) => {
+    if (template?.id && template?.sizeSpecifications) {
+      TEMPLATE_LIBRARY[id] = template;
+    }
+  });
 }
 
 function readNumberInput(input, fallback = 0) {
@@ -858,6 +866,10 @@ function getFontFamilyForLanguage(languageCode = state.activeLanguage) {
   return FONT_STACK_BY_LANGUAGE[languageCode] || FONT_STACKS.default;
 }
 
+function getPrimaryFontFamily(languageCode = state.activeLanguage) {
+  return getFontFamilyForLanguage(languageCode).split(",")[0].trim().replace(/^["']|["']$/g, "");
+}
+
 function syncEnglishVariant() {
   state.variants.en = {
     ...(state.variants.en || {}),
@@ -871,7 +883,7 @@ function syncEnglishVariant() {
 }
 
 function loadApiConfig() {
-  const savedConfig = JSON.parse(localStorage.getItem("posterTranslationApi") || "{}");
+  const savedConfig = JSON.parse(sessionStorage.getItem("posterTranslationApi") || "{}");
   return {
     provider: savedConfig.provider || "mymemory",
     apiKey: savedConfig.apiKey || "",
@@ -887,7 +899,7 @@ function saveCurrentApiConfig() {
     apiBaseUrl: apiBaseUrlInput.value.trim() || "https://api.openai.com/v1",
     model: apiModelInput.value.trim() || "gpt-4o-mini",
   };
-  localStorage.setItem("posterTranslationApi", JSON.stringify(state.apiConfig));
+  sessionStorage.setItem("posterTranslationApi", JSON.stringify(state.apiConfig));
   toggleApiFields();
   translationStatus.textContent = "翻译 API 配置已保存。";
 }
@@ -996,10 +1008,30 @@ function createPlaceholderNode() {
 }
 
 function wrapText(text, maxWidth) {
+  return wrapTextByDirection(text, maxWidth, "ltr");
+}
+
+function wrapTextByDirection(text, maxWidth, direction = "ltr") {
   const paragraphs = text.split("\n");
   const lines = [];
 
   paragraphs.forEach((paragraph) => {
+    if (direction === "rtl") {
+      const tokens = paragraph.split(/(\s+)/).filter((token) => token.length);
+      let line = "";
+      tokens.forEach((token) => {
+        const nextLine = line + token;
+        if (measureContext.measureText(nextLine).width > maxWidth && line.trim()) {
+          lines.push(line.trimEnd());
+          line = token.trimStart();
+        } else {
+          line = nextLine;
+        }
+      });
+      lines.push(line);
+      return;
+    }
+
     let line = "";
     Array.from(paragraph).forEach((char) => {
       const nextLine = line + char;
@@ -1018,7 +1050,7 @@ function wrapText(text, maxWidth) {
 
 function getWrappedLines(text, options, maxWidth) {
   measureContext.font = `${options.weight} ${options.size}px ${options.font}`;
-  const lines = wrapText(text || " ", maxWidth);
+  const lines = wrapTextByDirection(text || " ", maxWidth, options.direction || "ltr");
   return lines;
 }
 
@@ -1044,7 +1076,10 @@ function getTitleSubtitleGap() {
 function getResolvedSubtitleLayout(title = getVariantForRender()?.title || "") {
   const titleLayout = getTitleLayout();
   const subtitleLayout = getSubtitleLayout();
-  const titleOptions = getTitleOptions();
+  const titleOptions = {
+    ...getTitleOptions(),
+    direction: getLanguage(state.activeLanguage).dir,
+  };
   const visibleTitleLines = getVisibleTextLineCount(title, titleOptions, titleLayout);
   const titleTextHeight = visibleTitleLines * titleOptions.size * titleOptions.lineHeight;
   return {
@@ -1054,11 +1089,16 @@ function getResolvedSubtitleLayout(title = getVariantForRender()?.title || "") {
 }
 
 function getTitleLineCount(title, languageCode = state.activeLanguage) {
-  return getWrappedLines(title, getTitleOptions(languageCode), getTitleLayout().width).length;
+  return getWrappedLines(
+    title,
+    { ...getTitleOptions(languageCode), direction: getLanguage(languageCode).dir },
+    getTitleLayout().width,
+  ).length;
 }
 
 function enforceTwoLineTitle(title, languageCode = state.activeLanguage) {
-  const lines = getWrappedLines(title, getTitleOptions(languageCode), getTitleLayout().width);
+  const titleOptions = { ...getTitleOptions(languageCode), direction: getLanguage(languageCode).dir };
+  const lines = getWrappedLines(title, titleOptions, getTitleLayout().width);
 
   if (lines.length <= 2) {
     return title;
@@ -1069,7 +1109,7 @@ function enforceTwoLineTitle(title, languageCode = state.activeLanguage) {
   const ellipsis = "...";
   while (
     fittedSecondLine.length > 0 &&
-    getWrappedLines(`${lines[0]}\n${fittedSecondLine}${ellipsis}`, getTitleOptions(languageCode), getTitleLayout().width)
+    getWrappedLines(`${lines[0]}\n${fittedSecondLine}${ellipsis}`, titleOptions, getTitleLayout().width)
       .length > 2
   ) {
     fittedSecondLine = fittedSecondLine.slice(0, -1).trimEnd();
@@ -1147,7 +1187,8 @@ function addTextLayer(box, text, options) {
 
   const rect = boxToCanvasRect(box);
   measureContext.font = `${options.weight} ${options.size}px ${options.font}`;
-  const lines = wrapText(textValue, rect.width);
+  const isRtl = options.direction === "rtl";
+  const lines = wrapTextByDirection(textValue, rect.width, options.direction);
   const group = new Konva.Group({
     x: rect.x,
     y: rect.y,
@@ -1171,13 +1212,14 @@ function addTextLayer(box, text, options) {
       y,
       width: rect.width,
       height: lineHeight,
-      text: line,
+      text: isRtl ? `\u202B${line}\u202C` : line,
       fill: options.color,
       fontFamily: options.font,
       fontSize: options.size,
       fontStyle: options.weight >= 700 ? "bold" : "normal",
       lineHeight: options.lineHeight,
       align: options.direction === "rtl" ? "right" : "left",
+      direction: options.direction || "ltr",
       verticalAlign: "top",
       wrap: "none",
     }));
@@ -1222,13 +1264,14 @@ function addTagLayer(text, direction, languageCode = state.activeLanguage) {
       y: paddingY,
       width: Math.max(0, width - paddingX * 2),
       height: Math.max(0, height - paddingY * 2),
-      text: textValue,
+      text: direction === "rtl" ? `\u202B${textValue}\u202C` : textValue,
       fill: rule.color || "#000000",
       fontFamily,
       fontSize,
       fontStyle: fontWeight >= 700 ? "bold" : "normal",
       lineHeight,
       align: direction === "rtl" ? "right" : "left",
+      direction: direction || "ltr",
       verticalAlign: "middle",
       wrap: "none",
       ellipsis: true,
@@ -1251,13 +1294,14 @@ function addTagLayer(text, direction, languageCode = state.activeLanguage) {
     y: tagBox.top,
     width,
     height: tagBox.height,
-    text: textValue,
+    text: direction === "rtl" ? `\u202B${textValue}\u202C` : textValue,
     fill: rule.color || "#000000",
     fontFamily,
     fontSize,
     fontStyle: fontWeight >= 700 ? "bold" : "normal",
     lineHeight,
     align: rule.align || (direction === "rtl" ? "left" : "right"),
+    direction: direction || "ltr",
     verticalAlign: "top",
     wrap: "none",
   }));
@@ -2009,7 +2053,7 @@ function decodeCsvBuffer(buffer) {
 }
 
 function normalizeCell(value) {
-  return String(value || "").trim();
+  return String(value || "").replace(/\r/g, "").trim();
 }
 
 function normalizeCsvLabel(value) {
@@ -2132,7 +2176,12 @@ function applyCsvRows(rows, meta = {}) {
     throw new Error("CSV 没有识别到可导入的语言列，请检查表头语言代码或语言名称。");
   }
 
-  state.selectedLanguageCodes = importedLanguageCodes;
+  state.selectedLanguageCodes = [
+    ...new Set([
+      ...state.selectedLanguageCodes,
+      ...importedLanguageCodes,
+    ]),
+  ];
   if (!state.selectedLanguageCodes.includes(state.activeLanguage)) {
     state.activeLanguage = state.selectedLanguageCodes[0];
   }
@@ -2153,7 +2202,7 @@ function applyCsvRows(rows, meta = {}) {
   renderPosterPreviewGrid();
   render();
   const delimiterLabel = meta.delimiter === "\t" ? "Tab" : meta.delimiter || ",";
-  translationStatus.textContent = `已从 CSV 识别并导入 ${importedLanguageCodes.length} 个语言版本（分隔符：${delimiterLabel}）。`;
+  translationStatus.textContent = `已从 CSV 识别并导入 ${importedLanguageCodes.length} 个语言版本，当前项目共 ${state.selectedLanguageCodes.length} 个语言（分隔符：${delimiterLabel}）。`;
 }
 
 async function importCsvFile(file) {
@@ -2194,6 +2243,10 @@ async function translateVariant(language, titleMode = "default") {
     };
   }
 
+  if (state.apiConfig.provider === "openai" && !state.apiConfig.apiKey) {
+    throw new Error("请先填写翻译 API Key。");
+  }
+
   const response = await fetch("/api/translate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -2212,7 +2265,8 @@ async function translateVariant(language, titleMode = "default") {
   });
 
   if (!response.ok) {
-    throw new Error("translation failed");
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "translation failed");
   }
 
   const data = await response.json();
@@ -2235,6 +2289,11 @@ async function translateWithMyMemoryClient(text, languageCode) {
   const response = await fetch(url.toString());
   const data = await response.json();
 
+  if (response.status === 429 || data.responseStatus === 429) {
+    await wait(1200);
+    throw new Error("MyMemory 免费翻译请求过于频繁，请稍后重试。");
+  }
+
   if (!response.ok || data.responseStatus >= 400) {
     throw new Error(data.responseDetails || "MyMemory translation failed");
   }
@@ -2244,15 +2303,22 @@ async function translateWithMyMemoryClient(text, languageCode) {
 
 function compactSourceTitle(title) {
   return title
-    .replace(/\bEquip the\b/gi, "Equip")
+    .replace(/\b(a|an|the)\b/gi, "")
     .replace(/\bwith the\b/gi, "with")
     .replace(/\bfor the\b/gi, "for")
+    .replace(/\bup to\b/gi, "up")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 async function generateLanguageVariants() {
   syncEnglishVariant();
+  saveCurrentApiConfig();
+  if (state.apiConfig.provider === "openai" && !state.apiConfig.apiKey) {
+    translationStatus.textContent = "请先填写并保存翻译 API Key。";
+    apiKeyInput.focus();
+    return;
+  }
   translationStatus.textContent = "正在生成多语言文案...";
   generateLanguages.disabled = true;
 
@@ -2289,7 +2355,7 @@ async function generateLanguageVariants() {
 }
 
 async function downloadCurrentImage(filename) {
-  await ensureFontsReady();
+  await ensureFontsReady([state.activeLanguage]);
   const link = document.createElement("a");
   link.download = filename;
   link.href = getPosterDataUrl();
@@ -2311,14 +2377,22 @@ function wait(ms) {
   });
 }
 
-async function ensureFontsReady() {
+async function ensureFontsReady(languageCodes = [state.activeLanguage]) {
   if (!document.fonts?.ready) {
     return;
   }
   try {
+    const uniqueLanguageCodes = [...new Set(languageCodes.filter(Boolean))];
+    await Promise.all(uniqueLanguageCodes.flatMap((languageCode) => {
+      const fontFamily = getPrimaryFontFamily(languageCode);
+      return [
+        document.fonts.load(`500 40px "${fontFamily}"`),
+        document.fonts.load(`900 90px "${fontFamily}"`),
+      ];
+    }));
     await Promise.race([
       document.fonts.ready,
-      wait(2000),
+      wait(5000),
     ]);
   } catch {
     // Browser fallback fonts will be used if remote font loading is unavailable.
@@ -2326,11 +2400,13 @@ async function ensureFontsReady() {
 }
 
 async function exportAllLanguages() {
-  await ensureFontsReady();
+  await ensureFontsReady(LANGUAGES.map((language) => language.code));
   const previousLanguage = state.activeLanguage;
   exportAll.disabled = true;
   translationStatus.textContent = "正在生成 ZIP 压缩包...";
   const files = [];
+  const totalCount = Math.max(1, state.resourcePresets.length * LANGUAGES.length);
+  let completedCount = 0;
 
   const previousPreset = state.resourcePreset;
   const previousImageBoxStyle = getBoxInlineStyle(imageBox);
@@ -2341,6 +2417,8 @@ async function exportAllLanguages() {
     state.resourcePreset = presetId;
     setBoxLayoutPx(imageBox, getImageLayout());
     for (const language of LANGUAGES) {
+      completedCount += 1;
+      translationStatus.textContent = `正在生成 ZIP 压缩包... ${completedCount}/${totalCount}`;
       state.activeLanguage = language.code;
       languageSelect.value = language.code;
       renderLanguageList();
@@ -2349,7 +2427,7 @@ async function exportAllLanguages() {
         name: filenameForLanguage(language, presetId),
         data: dataUrlToBytes(getPosterDataUrl()),
       });
-      await wait(30);
+      await wait(completedCount % 4 === 0 ? 60 : 20);
     }
   }
 
@@ -2419,40 +2497,40 @@ function createZip(files) {
 function zipLocalHeader(filenameBytes, size, crc) {
   const header = new Uint8Array(30);
   const view = new DataView(header.buffer);
-  view.setUint32(0, 0x04034b50, true);
-  view.setUint16(4, 20, true);
-  view.setUint16(6, 0x0800, true);
-  view.setUint16(8, 0, true);
-  view.setUint16(10, 0, true);
-  view.setUint16(12, 0, true);
-  view.setUint32(14, crc, true);
-  view.setUint32(18, size, true);
-  view.setUint32(22, size, true);
-  view.setUint16(26, filenameBytes.length, true);
-  view.setUint16(28, 0, true);
+  view.setUint32(0, 0x04034b50, true); // Local file header signature.
+  view.setUint16(4, 20, true); // Minimum version needed to extract.
+  view.setUint16(6, 0x0800, true); // General purpose bit flag: UTF-8 filename.
+  view.setUint16(8, 0, true); // Compression method: store.
+  view.setUint16(10, 0, true); // Last modified file time.
+  view.setUint16(12, 0, true); // Last modified file date.
+  view.setUint32(14, crc, true); // CRC-32.
+  view.setUint32(18, size, true); // Compressed size.
+  view.setUint32(22, size, true); // Uncompressed size.
+  view.setUint16(26, filenameBytes.length, true); // File name length.
+  view.setUint16(28, 0, true); // Extra field length.
   return header;
 }
 
 function zipCentralDirectoryHeader(entry) {
   const header = new Uint8Array(46);
   const view = new DataView(header.buffer);
-  view.setUint32(0, 0x02014b50, true);
-  view.setUint16(4, 20, true);
-  view.setUint16(6, 20, true);
-  view.setUint16(8, 0x0800, true);
-  view.setUint16(10, 0, true);
-  view.setUint16(12, 0, true);
-  view.setUint16(14, 0, true);
-  view.setUint32(16, entry.crc, true);
-  view.setUint32(20, entry.size, true);
-  view.setUint32(24, entry.size, true);
-  view.setUint16(28, entry.filenameBytes.length, true);
-  view.setUint16(30, 0, true);
-  view.setUint16(32, 0, true);
-  view.setUint16(34, 0, true);
-  view.setUint16(36, 0, true);
-  view.setUint32(38, 0, true);
-  view.setUint32(42, entry.offset, true);
+  view.setUint32(0, 0x02014b50, true); // Central directory file header signature.
+  view.setUint16(4, 20, true); // Version made by.
+  view.setUint16(6, 20, true); // Minimum version needed to extract.
+  view.setUint16(8, 0x0800, true); // General purpose bit flag: UTF-8 filename.
+  view.setUint16(10, 0, true); // Compression method: store.
+  view.setUint16(12, 0, true); // Last modified file time.
+  view.setUint16(14, 0, true); // Last modified file date.
+  view.setUint32(16, entry.crc, true); // CRC-32.
+  view.setUint32(20, entry.size, true); // Compressed size.
+  view.setUint32(24, entry.size, true); // Uncompressed size.
+  view.setUint16(28, entry.filenameBytes.length, true); // File name length.
+  view.setUint16(30, 0, true); // Extra field length.
+  view.setUint16(32, 0, true); // File comment length.
+  view.setUint16(34, 0, true); // Disk number start.
+  view.setUint16(36, 0, true); // Internal file attributes.
+  view.setUint32(38, 0, true); // External file attributes.
+  view.setUint32(42, entry.offset, true); // Relative offset of local header.
   return header;
 }
 
@@ -2820,7 +2898,8 @@ async function copyCurrentProjectLink() {
   }
 
   if (!state.projectId) {
-    await saveCurrentProject();
+    projectStatus.textContent = "请先保存项目生成分享链接。";
+    return;
   }
   const url = new URL(window.location.href);
   url.searchParams.set("project", state.projectId);
@@ -2829,6 +2908,10 @@ async function copyCurrentProjectLink() {
 }
 
 async function toggleProgressConfirmation() {
+  if (!state.projectId && !IS_STANDALONE) {
+    projectStatus.textContent = "请先保存项目后再确认完成。";
+    return;
+  }
   state.progressStatus = state.progressStatus === "已完成" ? "制作中" : "已完成";
   refreshProjectChrome();
   projectStatus.textContent = state.progressStatus === "已完成"
@@ -2840,16 +2923,19 @@ async function toggleProgressConfirmation() {
 }
 
 async function refreshPreviewImagesForAllLanguages() {
-  await ensureFontsReady();
+  await ensureFontsReady(LANGUAGES.map((language) => language.code));
   const previousLanguage = state.activeLanguage;
   refreshPreviews.disabled = true;
   translationStatus.textContent = "正在生成多语言海报预览...";
+  let completedCount = 0;
 
   for (const language of LANGUAGES) {
+    completedCount += 1;
+    translationStatus.textContent = `正在生成多语言海报预览... ${completedCount}/${LANGUAGES.length}`;
     state.activeLanguage = language.code;
     languageSelect.value = language.code;
     state.previewImages[language.code] = getPosterDataUrl();
-    await wait(20);
+    await wait(completedCount % 4 === 0 ? 60 : 20);
   }
 
   state.activeLanguage = previousLanguage;
@@ -2859,74 +2945,6 @@ async function refreshPreviewImagesForAllLanguages() {
   render();
   refreshPreviews.disabled = false;
   translationStatus.textContent = "多语言海报预览已刷新。";
-}
-
-function enableBoxEditing(box) {
-  let activeAction = null;
-
-  box.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    box.setPointerCapture(event.pointerId);
-
-    const stageRect = stage.getBoundingClientRect();
-    const boxRect = box.getBoundingClientRect();
-    const isResize = event.target.tagName.toLowerCase() === "i";
-
-    activeAction = {
-      isResize,
-      startX: event.clientX,
-      startY: event.clientY,
-      stageWidth: stageRect.width,
-      stageHeight: stageRect.height,
-      left: boxRect.left - stageRect.left,
-      top: boxRect.top - stageRect.top,
-      width: boxRect.width,
-      height: boxRect.height,
-    };
-  });
-
-  box.addEventListener("pointermove", (event) => {
-    if (!activeAction) {
-      return;
-    }
-
-    const dx = event.clientX - activeAction.startX;
-    const dy = event.clientY - activeAction.startY;
-    let nextLeft = activeAction.left;
-    let nextTop = activeAction.top;
-    let nextWidth = activeAction.width;
-    let nextHeight = activeAction.height;
-
-    if (activeAction.isResize) {
-      nextWidth = Math.max(56, activeAction.width + dx);
-      nextHeight = Math.max(44, activeAction.height + dy);
-      nextWidth = Math.min(nextWidth, activeAction.stageWidth - activeAction.left);
-      nextHeight = Math.min(nextHeight, activeAction.stageHeight - activeAction.top);
-    } else {
-      nextLeft = Math.min(
-        Math.max(0, activeAction.left + dx),
-        activeAction.stageWidth - activeAction.width,
-      );
-      nextTop = Math.min(
-        Math.max(0, activeAction.top + dy),
-        activeAction.stageHeight - activeAction.height,
-      );
-    }
-
-    box.style.left = `${(nextLeft / activeAction.stageWidth) * 100}%`;
-    box.style.top = `${(nextTop / activeAction.stageHeight) * 100}%`;
-    box.style.width = `${(nextWidth / activeAction.stageWidth) * 100}%`;
-    box.style.height = `${(nextHeight / activeAction.stageHeight) * 100}%`;
-    render();
-  });
-
-  box.addEventListener("pointerup", () => {
-    activeAction = null;
-  });
-
-  box.addEventListener("pointercancel", () => {
-    activeAction = null;
-  });
 }
 
 baseUpload.addEventListener("change", async (event) => {
@@ -3016,42 +3034,6 @@ importCsvButton.addEventListener("click", async () => {
   } catch (error) {
     translationStatus.textContent = error.message;
   }
-});
-
-titleFont.addEventListener("input", (event) => {
-  state.titleFont = event.target.value;
-  clearPreviewImages();
-  render();
-});
-
-titleSize.addEventListener("input", (event) => {
-  state.titleSize = Number(event.target.value) || 90;
-  clearPreviewImages();
-  render();
-});
-
-titleColor.addEventListener("input", (event) => {
-  state.titleColor = event.target.value;
-  clearPreviewImages();
-  render();
-});
-
-subtitleFont.addEventListener("input", (event) => {
-  state.subtitleFont = event.target.value;
-  clearPreviewImages();
-  render();
-});
-
-subtitleSize.addEventListener("input", (event) => {
-  state.subtitleSize = Number(event.target.value) || 40;
-  clearPreviewImages();
-  render();
-});
-
-subtitleColor.addEventListener("input", (event) => {
-  state.subtitleColor = event.target.value;
-  clearPreviewImages();
-  render();
 });
 
 exportImage.addEventListener("click", async () => {
